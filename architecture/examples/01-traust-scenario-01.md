@@ -4,7 +4,7 @@
 
 ## 1. The actual task
 
-Traust is a deployer/orchestrator. The experiment target was its standalone, implementation-independent test harness, not Traust's production implementation and not Zonotron itself.
+Traust is a deployer/orchestrator. The experiment target was its standalone, implementation-independent test harness, not Traust's production implementation and not Saum itself.
 
 Scenario 01 describes a successful upgrade. Discovery finds a newer image version, updates the persisted catalog and tenant target under an automatic update policy, and triggers convergence from a running v1 to v2.
 
@@ -28,7 +28,7 @@ Worker state is not supposed to become a runtime dependency of the harness. The 
 
 The handoff records shared-host/shared-Docker conditions. That makes resource namespacing and cleanup ownership important: file/worktree isolation alone is not complete environment isolation.
 
-The user was manually launching experiments, manually reviewing results and developing manager evaluation/synthesis prompts. There is no evidence in this source set of a complete automated Zonotron implementation.
+The user was manually launching experiments, manually reviewing results and developing manager evaluation/synthesis prompts. There is no evidence in this source set of a complete automated Saum implementation.
 
 ## 4. Reported v5 outcomes
 
@@ -117,7 +117,7 @@ The main thread treated v5 as meaningful evidence that independent workers creat
 
 It did not establish the economics of sustained exploration, successful manager-guided follow-up, cheap exploitation of a settled foundation, reconciliation after later upstream changes, or superiority to simpler workflows.
 
-The user then clarified that the crude whole-milestone fan-out should not define Zonotron's final exploration policy. A later coordinator could negotiate smaller consequential uncertainties, while still deliberately preserving open-ended foundation pressure where it matters.
+The user then clarified that the crude whole-milestone fan-out should not define Saum's final exploration policy. A later coordinator could negotiate smaller consequential uncertainties, while still deliberately preserving open-ended foundation pressure where it matters.
 
 ## 13. Proposed next tests, not reported results
 

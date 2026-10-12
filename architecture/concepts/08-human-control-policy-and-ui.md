@@ -8,7 +8,7 @@ The user imagines defining product/system intent at a CEO/CTO-like level, then w
 
 The graph expresses which bodies of knowledge the user wants to govern independently. Internal local decisions may remain delegated. The same person can operate several acceptance boundaries without every decision becoming a separate project.
 
-Zonotron should therefore support deliberate control resolution: explicit interaction models when their ownership matters, omitted layers when downstream discretion is acceptable.
+Saum should therefore support deliberate control resolution: explicit interaction models when their ownership matters, omitted layers when downstream discretion is acceptable.
 
 ## 2. Different kinds of human decision
 
@@ -40,7 +40,7 @@ The deterministic layer need not author all plans or inspect every artifact. It 
 
 Conversely, a sophisticated reviewer does not acquire authority merely because it has a persuasive explanation. A confident recommendation and a legal settlement transition are different objects.
 
-This separation is part of the safety/coherence argument for Zonotron, not a guarantee that configured policies will be wise.
+This separation is part of the safety/coherence argument for Saum, not a guarantee that configured policies will be wise.
 
 ## 6. The original DAG UI
 

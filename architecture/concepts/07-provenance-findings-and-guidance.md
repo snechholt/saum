@@ -103,7 +103,7 @@ This supports comments on findings, code, commits, hunks and settlement proposal
 
 A general invariant may belong in stable worker/workflow instructions after review. An architectural lesson may belong in a settled project artifact or decision. Temporary directional advice may belong in the next milestone's guidance. A one-off mistake may deserve only rejection and retained evidence.
 
-The user emphasized the third category. Zonotron should be able to tilt the next attempt toward better choices without continually expanding Ralph's core rules. Foundation-specific advice can be cleared, retired, or embodied in accepted repository structure once its job is done.
+The user emphasized the third category. Saum should be able to tilt the next attempt toward better choices without continually expanding Ralph's core rules. Foundation-specific advice can be cleared, retired, or embodied in accepted repository structure once its job is done.
 
 A hidden fifth destination is an upstream question: some knowledge cannot honestly be turned into guidance until the appropriate project settles the ambiguity.
 

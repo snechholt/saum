@@ -4,11 +4,11 @@
 
 ## 1. The boundary the discussions were trying to find
 
-The user's starting mental model was deliberately simple: a project is standalone, plausibly a Git repository, and receives a request to reconcile against another repository. It should not need Zonotron to control every internal agent role, planning document or pull request.
+The user's starting mental model was deliberately simple: a project is standalone, plausibly a Git repository, and receives a request to reconcile against another repository. It should not need Saum to control every internal agent role, planning document or pull request.
 
 At the same time, a bare request/response black box loses the most valuable Scenario 01 evidence. A producer can locally recover from a bad approach without recognizing that the approach exposed a weakness in upstream intent. It can claim completion using its own inadequate tests.
 
-The interface therefore needs enough structure for accountable objectives, viable intake, inspectable results and independent acceptance, without importing the whole local methodology into Zonotron.
+The interface therefore needs enough structure for accountable objectives, viable intake, inspectable results and independent acceptance, without importing the whole local methodology into Saum.
 
 The distinction is **required participation semantics, optional internal method**. Whether these are carried by prompt instructions, repository files, a driver, messages or APIs remains open.
 
@@ -30,7 +30,7 @@ The request should not silently prescribe every mechanism the project must use. 
 
 This identifies the candidate revision, artifact location and format, claimed coverage, local status, evidence and execution provenance, plus optional observations.
 
-Methodological freedom does not mean arbitrary outputs can be automatically accepted. An unfamiliar format with no interpreter, relevant evidence or available reviewer can block meaningful validation. The appropriate response might be tooling, alternative evidence or human judgment, not pretending Zonotron has a universal parser.
+Methodological freedom does not mean arbitrary outputs can be automatically accepted. An unfamiliar format with no interpreter, relevant evidence or available reviewer can block meaningful validation. The appropriate response might be tooling, alternative evidence or human judgment, not pretending Saum has a universal parser.
 
 ### Validation contract: what conformance means
 
@@ -70,7 +70,7 @@ These answers can influence a global plan without exposing every internal task.
 
 Which parts are ordinary work under the existing structure? Where are there materially different approaches? Which uncertainty might affect other projects or reveal an upstream issue? Would discussion, a focused probe, or multiple candidates provide useful discrimination? Can exploration be limited to one work package rather than the entire reconciliation?
 
-A project should be allowed to say that a particular experiment would add little value. Zonotron should also be able to request validation-focused exploration for reasons outside the project's immediate delivery incentives.
+A project should be allowed to say that a particular experiment would add little value. Saum should also be able to request validation-focused exploration for reasons outside the project's immediate delivery incentives.
 
 ### Evidence and acceptance
 
@@ -90,9 +90,9 @@ Precise forecasts were not required by the discussions. Explanations of uncertai
 
 ## 5. Who proposes, who challenges, who accepts
 
-A working pattern is project proposal, Zonotron global review, project pushback or revision, then acceptance under the relevant policy. Multiple rounds are allowed when they add value; one-shot planning is not required.
+A working pattern is project proposal, Saum global review, project pushback or revision, then acceptance under the relevant policy. Multiple rounds are allowed when they add value; one-shot planning is not required.
 
-Zonotron should not claim complete local domain knowledge. The project should not claim that its preferred methodology determines global authority. The combined conversation establishes an executable contract rather than central micromanagement.
+Saum should not claim complete local domain knowledge. The project should not claim that its preferred methodology determines global authority. The combined conversation establishes an executable contract rather than central micromanagement.
 
 A candidate exit condition is mutual viability: the project can execute it, and the coordinator can account for obligations, dependencies and acceptance. How to stop fruitless negotiation, resolve disagreement or escalate to a human is still open.
 
@@ -128,7 +128,7 @@ Both should be able to reach upstream review. Blocking status is not the sole cr
 
 A project may first receive an impact-analysis request rather than execution authority. It can return a proposed breakdown, dependencies and uncertainty without changing accepted state.
 
-The user's experiment proposal goes further: Zonotron could send the same ordinary request to isolated instances of a project. Each instance uses its normal internal method. The coordinator compares candidates afterward. This avoids requiring every methodology to implement the same experiment machinery.
+The user's experiment proposal goes further: Saum could send the same ordinary request to isolated instances of a project. Each instance uses its normal internal method. The coordinator compares candidates afterward. This avoids requiring every methodology to implement the same experiment machinery.
 
 The scope can be one work package, a complete project reconciliation, or, speculatively, a downstream subtree. These are not all equally appropriate for a first implementation.
 
@@ -136,9 +136,9 @@ The scope can be one work package, a complete project reconciliation, or, specul
 
 Earlier responses casually listed Kiro, Spec Kit and AO adapters. The user correctly challenged the implication of tight integration. The desired boundary may be much looser: ordinary instructions in, artifact references and evidence out, with a small generic driver responsible for the handoff.
 
-A rich adapter could improve discoverability, capture evidence or expose local capabilities, but it should be an option whose value is demonstrated. A supported methodology need not expose all of its internal workflow concepts to Zonotron.
+A rich adapter could improve discoverability, capture evidence or expose local capabilities, but it should be an option whose value is demonstrated. A supported methodology need not expose all of its internal workflow concepts to Saum.
 
-Similarly, an experiment helper can be a reusable procedure plus infrastructure, not a mandatory internal ritual. Projects can also run their own experiments that Zonotron only sees through candidate evidence.
+Similarly, an experiment helper can be a reusable procedure plus infrastructure, not a mandatory internal ritual. Projects can also run their own experiments that Saum only sees through candidate evidence.
 
 ## 10. What the interface should avoid becoming
 

@@ -16,7 +16,7 @@ The validation branch proposed an initial MVC with versioned project dependencie
 
 A concrete implementation could initially use Git, Markdown, available tests and explicit human decisions. The source does not select exact schemas, libraries or a database. "MVC" is preserved as the branch's label rather than assigned a new expansion here.
 
-The key demonstration would be that a large objective can be progressively planned, executed, evaluated and accepted without Zonotron controlling the project's internal methodology.
+The key demonstration would be that a large objective can be progressively planned, executed, evaluated and accepted without Saum controlling the project's internal methodology.
 
 ## 3. A separate experimental proof slice
 
@@ -44,7 +44,7 @@ This distinction should be made deliberately before implementation. Otherwise th
 
 ## 6. Non-goals carried forward
 
-Zonotron is not intended to be one unconstrained agent doing architecture, tests and implementation in one conversation. It is not a promise of perfect prompting, universal semantic validation or automatic upstream rewriting.
+Saum is not intended to be one unconstrained agent doing architecture, tests and implementation in one conversation. It is not a promise of perfect prompting, universal semantic validation or automatic upstream rewriting.
 
 It should not delete mature accepted artifacts merely because a parent changed. It should not automatically choose one experimental winner or merge every useful fragment. It should not make every ordinary worker perform broad architectural criticism or turn every local review into a top-level project.
 
@@ -56,9 +56,9 @@ The original inventory and later discussions preserve several possibilities: edi
 
 These belong in the design inventory even when excluded from a first version. Their dependencies, benefits and failure modes need separate evaluation.
 
-## 8. Using this dossier to build Zonotron's own architecture
+## 8. Using this dossier to build Saum's own architecture
 
-The user wants this material to become input to an Architecture-level project that Zonotron could hypothetically help build itself. The dossier should therefore be treated as a source corpus, not already accepted Architecture A0.
+The user wants this material to become input to an Architecture-level project that Saum could hypothetically help build itself. The dossier should therefore be treated as a source corpus, not already accepted Architecture A0.
 
 A possible first assignment would be to extract candidate requirements and invariants, identify incompatible proposals, define the smallest useful system boundary, and propose the decisions that need human settlement. The project could then produce a clearer architecture and scenarios without silently ratifying every brainstorming idea.
 
@@ -68,7 +68,7 @@ This is a potential self-hosting path, not evidence that self-hosting already wo
 
 ## 9. Avoiding circular authority in self-hosting
 
-The conceptual safeguard already present in the design is that generation does not confer authority. A Zonotron-assisted candidate architecture still needs acceptance under an external human/policy basis. Its own output should not authorize the transition that makes it authoritative merely because the system produced it.
+The conceptual safeguard already present in the design is that generation does not confer authority. A Saum-assisted candidate architecture still needs acceptance under an external human/policy basis. Its own output should not authorize the transition that makes it authoritative merely because the system produced it.
 
 The exact bootstrap trust model is not settled. This paragraph is an editorial implication of the existing authority principle, recorded for future design rather than a new agreed mechanism.
 

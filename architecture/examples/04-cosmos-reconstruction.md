@@ -6,7 +6,7 @@
 
 Cosmos initially has Implementation I0 and little or no explicit upstream design, behavior model, architecture or test harness. The system already contains knowledge, but some of it is accidental, undesirable or undocumented.
 
-Zonotron could propose a governance shape rather than impose one. Perhaps Architecture -> Implementation is enough. Perhaps Design and a Test Harness merit separate authority. The question is what knowledge the human wants to govern, not how many documents an agent can produce.
+Saum could propose a governance shape rather than impose one. Perhaps Architecture -> Implementation is enough. Perhaps Design and a Test Harness merit separate authority. The question is what knowledge the human wants to govern, not how many documents an agent can produce.
 
 ## 2. Observe without declaring requirements
 

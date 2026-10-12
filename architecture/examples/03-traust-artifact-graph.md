@@ -86,11 +86,11 @@ Once compatible new inputs are accepted, Implementation can reconcile its previo
 
 The important requirement is an accountable acceptance basis, not a visually minimal graph. Omitting direct edges must not hide applicable obligations; adding all possible edges must not automatically imply wasteful full rebuilding.
 
-## 8. Why this is a useful Zonotron example
+## 8. Why this is a useful Saum example
 
 The projects are heterogeneous: broad prose, behavioral model, design, executable harness and code. Each requires different local methods and different conformance evidence. Yet the surrounding questions are shared: what governs this state, what changed, what is the objective, how can it be inspected, what has been accepted, and what findings need to return upstream?
 
-That makes it a concrete test of the proposed generic interface rather than a reason to put Allium-specific logic in Zonotron's core.
+That makes it a concrete test of the proposed generic interface rather than a reason to put Allium-specific logic in Saum's core.
 
 ## Sources
 

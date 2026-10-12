@@ -25,7 +25,7 @@ The original formulation was:
 
 That is a useful intent, but it is not an assertion that every real omission is intentional. Experiments may reveal accidental gaps. The system needs a way to distinguish permitted discretion from a missing decision that affects other projects.
 
-This makes Zonotron potentially useful even when a human does not want to delegate all engineering. The graph selects the resolution at which the human retains control.
+This makes Saum potentially useful even when a human does not want to delegate all engineering. The graph selects the resolution at which the human retains control.
 
 ## 3. From software-development manager to generic reconciliation layer
 
@@ -39,11 +39,11 @@ This is an architectural generalization, not a decision to launch a universal or
 
 The working split is between cross-project governance and project-local method.
 
-Zonotron coordinates which accepted upstream revisions a project must reconcile against, the relevant objective and scope, cross-project ordering, negotiation of viable work, and acceptance into the authoritative graph. It preserves references to candidate state, evidence and decisions. It can route findings to the appropriate upstream owner.
+Saum coordinates which accepted upstream revisions a project must reconcile against, the relevant objective and scope, cross-project ordering, negotiation of viable work, and acceptance into the authoritative graph. It preserves references to candidate state, evidence and decisions. It can route findings to the appropriate upstream owner.
 
 A project chooses how to do its work: plain coding sessions, a Ralph loop, a specification workflow, issue-to-PR automation, domain tools, experiments, human workshops, or a combination. It understands its current internals and can propose appropriate increments and evidence.
 
-Independent validation evaluates conformance. Zonotron owns the acceptance process but need not implement every validator or possess one context containing all project internals. This is an important refinement from the validation branch, not a complete validation architecture.
+Independent validation evaluates conformance. Saum owns the acceptance process but need not implement every validator or possess one context containing all project internals. This is an important refinement from the validation branch, not a complete validation architecture.
 
 The immediate mental model remains deliberately loose: one standalone repository is instructed to reconcile against identified state in another repository. A rich protocol could initially be expressed through instructions, files and returned references. "Adapter" should not silently imply a custom integration with every internal framework.
 
@@ -53,7 +53,7 @@ The proposed boundary is not "send request, trust result." A project must expose
 
 The Scenario 01 concern makes this especially important. A project might dismiss an unsuccessful registry approach as a bad local idea and omit it from a summary. A cross-project reviewer might discover that the approach followed a plausible reading of an ambiguous upstream contract. A mandatory summary alone is therefore an information-loss boundary.
 
-The stronger direction is observable execution and retained provenance, plus optional project observations and explicit blockers. Zonotron or a validator can inspect more deeply when warranted. That does not mean every transcript is always loaded into one giant manager context.
+The stronger direction is observable execution and retained provenance, plus optional project observations and explicit blockers. Saum or a validator can inspect more deeply when warranted. That does not mean every transcript is always loaded into one giant manager context.
 
 ## 6. Deterministic control and semantic work are different
 
@@ -85,7 +85,7 @@ Finally, independent exploration is not automatically economical. Its value must
 
 A useful current framing is:
 
-> Zonotron coordinates the evolution of independently governed artifacts. It delegates production methods, preserves evidence and accepted state, and controls reconciliation and settlement across their authority relationships.
+> Saum coordinates the evolution of independently governed artifacts. It delegates production methods, preserves evidence and accepted state, and controls reconciliation and settlement across their authority relationships.
 
 This does not settle whether a project graph must be a strict DAG in every respect, what constitutes a revision, or how much planning and experimentation the core performs. Those are architecture questions for the next stage.
 

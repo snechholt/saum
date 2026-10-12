@@ -4,7 +4,7 @@
 
 ## 1. The problem
 
-Normal Zonotron examples start with explicit upstream intent: Architecture constrains Design and Test Harness, which constrain Implementation. But an existing messy application may have only code. The source example calls that application Cosmos.
+Normal Saum examples start with explicit upstream intent: Architecture constrains Design and Test Harness, which constrain Implementation. But an existing messy application may have only code. The source example calls that application Cosmos.
 
 Much of Cosmos's actual system knowledge is implicit in implementation. To onboard it, the natural work direction is upward: inspect code, recover design and behavior, and reconstruct architecture.
 
@@ -72,7 +72,7 @@ This is not a claim that every reconstructed fact needs a lengthy human workshop
 
 ## 7. Proposing a governance graph
 
-Zonotron could inspect a legacy project and propose alternative artifact structures. A small service might need only Architecture -> Implementation. A more complex Cosmos could justify Design and Test Harness, or a Behaviour Model, security model or deployment model.
+Saum could inspect a legacy project and propose alternative artifact structures. A small service might need only Architecture -> Implementation. A more complex Cosmos could justify Design and Test Harness, or a Behaviour Model, security model or deployment model.
 
 The criterion is not "how many documents can be generated?" It is "which bodies of knowledge should become independently settled authority?"
 

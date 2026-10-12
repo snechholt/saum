@@ -1,14 +1,14 @@
-# Zonotron: idea inventory and evolving conceptual design
+# Saum: idea inventory and evolving conceptual design
 
 **Dossier date:** October 11, 2026  
 **Status:** working design dossier; not a settled architecture, implementation specification, or committed roadmap.  
-**Purpose:** preserve the ideas, reasoning, examples, disagreements, experimental lessons, and unresolved questions developed in the main discussion and two attached branch summaries. This material can later become input to a Zonotron Architecture project.
+**Purpose:** preserve the ideas, reasoning, examples, disagreements, experimental lessons, and unresolved questions developed in the main discussion and two attached branch summaries. This material can later become input to a Saum Architecture project.
 
-Zonotron is the provisional name of the proposed system. **Traust is the separate deployer/orchestrator whose test-harness experiments helped motivate it.** The two must not be conflated.
+Saum is the provisional name of the proposed system. **Traust is the separate deployer/orchestrator whose test-harness experiments helped motivate it.** The two must not be conflated.
 
 ## The current center of gravity
 
-The working idea is a system for managing a graph of independently governed project artifacts. Accepted upstream state constrains downstream work. Projects use their own methodologies to reconcile their existing state against those constraints. Zonotron coordinates the cross-project process, retains evidence, and controls which candidates become accepted state under human or configured policy authority.
+The working idea is a system for managing a graph of independently governed project artifacts. Accepted upstream state constrains downstream work. Projects use their own methodologies to reconcile their existing state against those constraints. Saum coordinates the cross-project process, retains evidence, and controls which candidates become accepted state under human or configured policy authority.
 
 Independent experimentation, comparative evaluation, and synthesis remain important, but their position has evolved: from defining the whole system to potentially being reusable ways of advancing or testing a reconciliation. Exactly how much of that machinery belongs in the core remains open.
 
@@ -18,7 +18,7 @@ The persistent object is accepted state and its provenance, not an agent persona
 
 The topical documents are the working synthesis. The examples preserve concrete pressures that led to the abstractions. The history records shifts in thinking and the sources preserve original wording, including stronger claims and proposals that should not automatically be inherited.
 
-These files are **documentation topics, not proposed Zonotron project nodes**. The collection does not settle a storage model, API, workflow engine, state machine, permission system, or integration strategy.
+These files are **documentation topics, not proposed Saum project nodes**. The collection does not settle a storage model, API, workflow engine, state machine, permission system, or integration strategy.
 
 | File | What it preserves |
 | --- | --- |
@@ -71,4 +71,4 @@ Treat this collection as evidence and design input. Ask a subsequent reviewer to
 
 When adding another branch discussion, preserve its source, integrate the relevant detail into the topic files, record any change in interpretation in the history, and update the unresolved questions. Keep one home for each detailed explanation and use cross-links elsewhere.
 
-There is intentionally no combined `ZONOTRON_FULL.md`. The individual Markdown files are the maintained form.
+There is intentionally no combined `SAUM_FULL.md`. The individual Markdown files are the maintained form.

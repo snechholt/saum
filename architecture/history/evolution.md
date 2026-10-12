@@ -1,4 +1,4 @@
-# Evolution of the Zonotron idea
+# Evolution of the Saum idea
 
 **Status:** historical interpretation of the supplied discussion, not a sequence of formally adopted decisions. The order below follows the conceptual progression; only dates explicit in source documents should be treated as source timestamps.
 
@@ -36,7 +36,7 @@ At the same time, open-ended first-milestone work is valuable because it pressur
 
 ## 5. Stable worker protocol versus temporary guidance
 
-The assistant's warning against endlessly hardening Ralph could be read as avoiding feedback. The user clarifies that Zonotron should absolutely be able to tilt the next attempt using milestone-specific opinions and learnings.
+The assistant's warning against endlessly hardening Ralph could be read as avoiding feedback. The user clarifies that Saum should absolutely be able to tilt the next attempt using milestone-specific opinions and learnings.
 
 **Refinement:** stable protocol, durable project decisions, temporary guidance and one-off rejected mistakes have different destinations. Temporary guidance must not silently change upstream authority.
 
@@ -64,7 +64,7 @@ An early response proposes a required set of upstream findings from every projec
 
 ## 9. Experiment ownership moves out, then partly back
 
-One direction puts experiments entirely inside projects as a reusable capability. The user then proposes generic project-level branching: each isolated instance performs an ordinary request while Zonotron compares the results.
+One direction puts experiments entirely inside projects as a reusable capability. The user then proposes generic project-level branching: each isolated instance performs an ordinary request while Saum compares the results.
 
 This can avoid duplicating the same alternatives/review infrastructure inside every method, including a school workshop. Yet it adds workflow scope to a system otherwise focused on artifact relationships.
 
@@ -74,7 +74,7 @@ This can avoid duplicating the same alternatives/review infrastructure inside ev
 
 Early examples made Foo, Timeline, Export and API separate projects, making decomposition look easy. The user corrects this: one Implementation project may contain all of them, with Design and Harness as its two upstream projects.
 
-**Refinement:** Zonotron needs a negotiation boundary for large batches suited to the project's local reality. The project knows both its domain and its method; the coordinator knows global relationships and intent. Neither simply dictates every local task.
+**Refinement:** Saum needs a negotiation boundary for large batches suited to the project's local reality. The project knows both its domain and its method; the coordinator knows global relationships and intent. Neither simply dictates every local task.
 
 ## 11. Tight adapters are challenged
 
@@ -112,11 +112,11 @@ The user wants all projects to understand the architecture's why and the model's
 
 ## 16. Validation branch: authority need not mean executing every check
 
-The branch begins with the concern that Zonotron must understand arbitrary outputs to settle them. It proposes separating candidate production, independent conformance evaluation and the acceptance decision.
+The branch begins with the concern that Saum must understand arbitrary outputs to settle them. It proposes separating candidate production, independent conformance evaluation and the acceptance decision.
 
 It further distinguishes reconciliation, artifact and validation contracts, with validation potentially associated with dependency edges.
 
-**Refinement:** Zonotron governs the acceptance process, but specialized tools, agents and humans can execute validation. Settlement is evidence-backed acceptance under policy, not a guarantee of correctness.
+**Refinement:** Saum governs the acceptance process, but specialized tools, agents and humans can execute validation. Settlement is evidence-backed acceptance under policy, not a guarantee of correctness.
 
 ## 17. Validation branch: living plans and conservative partial acceptance
 

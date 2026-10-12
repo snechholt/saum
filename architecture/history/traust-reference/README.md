@@ -2,7 +2,7 @@
 
 These files are copied unchanged from the `documentation@11c2a1` tree inside the supplied v5 review archive. The evaluation identifies the documentation revision as `11c2a1efefcd5bf91d6bed3e6eff070e001211a6`.
 
-They support the examples in the dossier: internal documentation authority, contract-drift risk, Scenario 01 behavior, and the potential Behaviour Model projection. They are not the architecture of Zonotron.
+They support the examples in the dossier: internal documentation authority, contract-drift risk, Scenario 01 behavior, and the potential Behaviour Model projection. They are not the architecture of Saum.
 
 Included references:
 

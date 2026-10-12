@@ -8,8 +8,8 @@ The generated topic documents are synthesis, not preserved originals. Their prov
 | --- | --- | --- |
 | [history/sources/01-original-manager.md](sources/01-original-manager.md) | `manager.md` | `efffa7a7c08b8d93b0451d259a16dca90950ad685f450f29496d96d413438b22` |
 | [history/sources/02-project-boundary-notes.md](sources/02-project-boundary-notes.md) | `Pasted markdown(2).md` | `b1924dacecfb60a39b8b3ac39b92af4fd7a3d264bcddb75bcaef96833c4620e6` |
-| [history/sources/03-validation-scoped-settlement-and-adaptive-planning.md](sources/03-validation-scoped-settlement-and-adaptive-planning.md) | `Zonotron — Validation, Scoped Settlement and Adaptive Reconciliation Planning.md` | `ea23948a2343632d1d869fc717ca2fb50d9a06dc8c4174282381da1e04b093d6` |
-| [history/sources/04-legacy-project-reconstruction.md](sources/04-legacy-project-reconstruction.md) | `Zonotron legacy-project reconstruction.md` | `c654fd5ebf41f18953690a7973838311cfccf3fa78f1494c91eec4db16e9869c` |
+| [history/sources/03-validation-scoped-settlement-and-adaptive-planning.md](sources/03-validation-scoped-settlement-and-adaptive-planning.md) | `Saum — Validation, Scoped Settlement and Adaptive Reconciliation Planning.md` | `ea23948a2343632d1d869fc717ca2fb50d9a06dc8c4174282381da1e04b093d6` |
+| [history/sources/04-legacy-project-reconstruction.md](sources/04-legacy-project-reconstruction.md) | `Saum legacy-project reconstruction.md` | `c654fd5ebf41f18953690a7973838311cfccf3fa78f1494c91eec4db16e9869c` |
 | [history/evidence/prompt.md](evidence/prompt.md) | `review(1).zip::prompt.md` | `55c19a484997d0f393e8a6aa1dd73724064e31f16b42a2350dc6ec576c72ac27` |
 | [history/evidence/review/EVALUATION.md](evidence/review/EVALUATION.md) | `review(1).zip::review/EVALUATION.md` | `73ed69817267ed91ef20ed55d6e57a619d8fc4f16ffdc81e6c019bf33ce868e5` |
 | [history/evidence/review/MANAGER_REVIEW.md](evidence/review/MANAGER_REVIEW.md) | `review(1).zip::review/MANAGER_REVIEW.md` | `2a80587b4a74cda6648d34c69c4dc5fd635b323ae7c48684cf5771b7f0c5bd09` |

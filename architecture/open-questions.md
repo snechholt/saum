@@ -6,7 +6,7 @@ Question IDs are for cross-context reference. The groups are organizational, not
 
 ## A. Purpose and scope
 
-**Q01. What is the smallest coherent Zonotron product?** Is it primarily a governed revision/reconciliation layer, an experiment-and-learning system, or a deliberately staged combination? The current sources support both prototype paths.
+**Q01. What is the smallest coherent Saum product?** Is it primarily a governed revision/reconciliation layer, an experiment-and-learning system, or a deliberately staged combination? The current sources support both prototype paths.
 
 **Q02. How much genericity is required initially?** Should the first implementation directly support non-software projects, or merely avoid assumptions that prevent them later?
 
@@ -62,7 +62,7 @@ Question IDs are for cross-context reference. The groups are organizational, not
 
 ## E. Negotiation and planning
 
-**Q25. Who has final authority over a decomposition?** The project knows local viability; Zonotron knows global constraints. What happens when they disagree?
+**Q25. Who has final authority over a decomposition?** The project knows local viability; Saum knows global constraints. What happens when they disagree?
 
 **Q26. What terminates negotiation?** Define sufficient viability without requiring an optimal plan or endless discussion.
 
@@ -180,7 +180,7 @@ Question IDs are for cross-context reference. The groups are organizational, not
 
 ## L. Proof and self-hosting
 
-**Q77. What experiment would most reduce uncertainty about Zonotron now?** Blind evaluator reliability, guidance transfer, a living-plan reconciliation, or preservation across an upstream change are different tests.
+**Q77. What experiment would most reduce uncertainty about Saum now?** Blind evaluator reliability, guidance transfer, a living-plan reconciliation, or preservation across an upstream change are different tests.
 
 **Q78. What would count as a failed thesis?** The sources argue for comparing against simpler workflows, including human attention and review cost; define meaningful success/failure rather than only collecting interesting examples.
 

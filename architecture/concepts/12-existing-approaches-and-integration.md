@@ -4,11 +4,11 @@
 
 ## 1. Why the comparisons matter
 
-The user had mainly used plain Codex interactively: development tasks, review, clarification and iteration. They had not yet explored subagents, issue-driven autonomy or specification workflows in depth. Zonotron described a hoped-for end state rather than an informed replacement for every existing tool.
+The user had mainly used plain Codex interactively: development tasks, review, clarification and iteration. They had not yet explored subagents, issue-driven autonomy or specification workflows in depth. Saum described a hoped-for end state rather than an informed replacement for every existing tool.
 
 The earlier comparison therefore served two purposes: explain what progressively higher-level delegation might feel like, and identify which proposed capabilities could be borrowed rather than built.
 
-The durable question remains: which parts of Zonotron disappear when existing tools are composed, and which concepts still have no satisfactory home?
+The durable question remains: which parts of Saum disappear when existing tools are composed, and which concepts still have no satisfactory home?
 
 ## 2. Levels of delegation discussed
 
@@ -47,7 +47,7 @@ The user remembered an AO/Agent Orchestrator tool as an intermediate step toward
 
 That remains a useful evaluation question even if the exact tool/version differs: how much repetitive operational work can be delegated while keeping the underlying coding agent constant?
 
-If such tooling handles isolation, status, CI and PR follow-up well, Zonotron need not own that machinery just to obtain a candidate. It still needs its own meaningful objective, acceptance and provenance boundary if those are not supplied.
+If such tooling handles isolation, status, CI and PR follow-up well, Saum need not own that machinery just to obtain a candidate. It still needs its own meaningful objective, acceptance and provenance boundary if those are not supplied.
 
 ## 5. BMAD and roles
 
@@ -55,7 +55,7 @@ The user saw BMAD as partly overlapping because it progresses through levels of 
 
 The remark that BMAD felt aimed at less technical users was the user's impression, not an established demographic fact. Its useful role here is as a reference for downward progression and for asking how much value comes from carefully structured procedures versus role-persona prompts.
 
-Zonotron can allow BMAD-like work inside a project without making its roles the universal ontology.
+Saum can allow BMAD-like work inside a project without making its roles the universal ontology.
 
 ## 6. Kiro and broad architecture inputs
 
@@ -67,7 +67,7 @@ The actual degree of overlap should be verified rather than assumed from labels 
 
 ## 7. Spec Kit and architectural decomposition
 
-The conversation treated Spec Kit as the closest challenge to the proposal. Earlier responses said its "spec of specs" decomposition was a high-overhead fallback; the user contrasted that with Zonotron, where propagation through an existing project graph is central.
+The conversation treated Spec Kit as the closest challenge to the proposal. Earlier responses said its "spec of specs" decomposition was a high-overhead fallback; the user contrasted that with Saum, where propagation through an existing project graph is central.
 
 That external characterization remains unverified here. The conceptual distinction survives: decomposing one oversized feature is not identical to determining how a new authoritative state affects several already accepted artifacts, including what to preserve, reopen, inform or defer.
 
@@ -75,15 +75,15 @@ Ordinary feature-to-task decomposition may be widely supplied. Architecture-to-r
 
 ## 8. Reconciliation versus strong spec-as-source
 
-The early critique used spec-as-source/regeneration as a philosophical contrast. One possible approach treats implementation as cheaply reproducible from sufficiently precise specs. Zonotron instead values accumulated reviewed structure and normally reconciles it incrementally.
+The early critique used spec-as-source/regeneration as a philosophical contrast. One possible approach treats implementation as cheaply reproducible from sufficiently precise specs. Saum instead values accumulated reviewed structure and normally reconciles it incrementally.
 
 Neither position should be turned into a blanket claim about all tools under one brand. The architectural bet is that meaningful downstream knowledge will often remain expensive or unreliable to reconstruct from upstream prose alone.
 
-If regeneration becomes adequate for a particular artifact, a project could use it internally. Zonotron's preservation principle is about accepted knowledge and governed change, not prohibiting every local regeneration technique.
+If regeneration becomes adequate for a particular artifact, a project could use it internally. Saum's preservation principle is about accepted knowledge and governed change, not prohibiting every local regeneration technique.
 
 ## 9. Historical methodological ancestry
 
-The discussion connected Zonotron with model-driven engineering, CASE, traceability, V-model thinking, risk-driven spikes, prototypes and explicit architectural decisions. The lesson was not that the idea is new or dead, but that its ancestors expose recurring costs: maintaining links, synchronizing representations, rigid process, and a second system describing the first.
+The discussion connected Saum with model-driven engineering, CASE, traceability, V-model thinking, risk-driven spikes, prototypes and explicit architectural decisions. The lesson was not that the idea is new or dead, but that its ancestors expose recurring costs: maintaining links, synchronizing representations, rigid process, and a second system describing the first.
 
 Claims about historical empirical studies were not reverified here. The design concern stands independently: the graph must earn the cost of maintaining it.
 

@@ -22,11 +22,11 @@ The source example is intentionally broad enough to exceed one comfortable worke
 
 ## 2. Global impact first, without pretending to know all internals
 
-Zonotron knows that Design and Harness were accepted against A12 and must be considered against A13. It can identify the broad changed obligations and request local impact analysis or intake negotiation.
+Saum knows that Design and Harness were accepted against A12 and must be considered against A13. It can identify the broad changed obligations and request local impact analysis or intake negotiation.
 
 Design understands its component and interaction model. Harness understands scenario coverage and externally observable evidence. Each can explain what changes locally, which assumptions are uncertain and what dependencies need decisions first.
 
-The global plan should be informed by both reports. Zonotron should not simply send the entire architecture and require every project to reinvent the same cross-project analysis, nor predesign all local tasks itself.
+The global plan should be informed by both reports. Saum should not simply send the entire architecture and require every project to reinvent the same cross-project analysis, nor predesign all local tasks itself.
 
 ## 3. Parallel upstream reconciliations
 
@@ -38,7 +38,7 @@ If Harness discovers that the required observation is ambiguous, it can block on
 
 ## 4. Negotiation rather than one-shot task sizing
 
-For either project, Zonotron can ask which units can be combined, which must be sequential, what evidence establishes them, which obligations remain unplanned and which decisions affect the other project.
+For either project, Saum can ask which units can be combined, which must be sequential, what evidence establishes them, which obligations remain unplanned and which decisions affect the other project.
 
 A plan can initially cover only the next meaningful increment while retaining the full objective. Later findings may split or combine remaining work. The earlier plan and reasons for change remain evidence.
 
@@ -56,13 +56,13 @@ Partial scoped consumption remains a possible later policy. This example does no
 
 Once D9 and TH5 are accepted against the compatible A13 basis, I27 can reconcile. It may still face a substantial combination of persistence, API, UI, export, timeline and template work.
 
-Zonotron and Implementation negotiate a plan suited to the actual local codebase and methodology. The project may use a specification workflow per work package, a task orchestrator, plain coding sessions or another method.
+Saum and Implementation negotiate a plan suited to the actual local codebase and methodology. The project may use a specification workflow per work package, a task orchestrator, plain coding sessions or another method.
 
 The problem being solved is not just feature decomposition. It is satisfying several governing inputs while preserving accepted structure and accounting for the entire upstream change.
 
 ## 7. Experiments can be scoped to the uncertain part
 
-Perhaps most changes fit the existing design, but how tenant templates interact with Baz admits several consequential approaches. Zonotron or the project could request alternatives only for that package.
+Perhaps most changes fit the existing design, but how tenant templates interact with Baz admits several consequential approaches. Saum or the project could request alternatives only for that package.
 
 A full-project fan-out would be justified only if interactions among the changes are the uncertainty. It should not be the default merely because the total objective is large.
 

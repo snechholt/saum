@@ -1,37 +1,37 @@
-# Zonotron — Validation, Scoped Settlement and Adaptive Reconciliation Planning
+# Saum — Validation, Scoped Settlement and Adaptive Reconciliation Planning
 
 **Branch summary — October 11, 2026**
 
-**Scope:** This discussion started with the concern that, even if Zonotron delegates reconciliation methodology to individual projects, it still needs to determine whether the resulting artifacts actually conform to their upstream dependencies. It developed into a model for validation authority, dynamically negotiated settlement increments, persistent reconciliation plans, and incremental acceptance.
+**Scope:** This discussion started with the concern that, even if Saum delegates reconciliation methodology to individual projects, it still needs to determine whether the resulting artifacts actually conform to their upstream dependencies. It developed into a model for validation authority, dynamically negotiated settlement increments, persistent reconciliation plans, and incremental acceptance.
 
 This is a working architectural direction, not a finalized specification.
 
-## 1. Starting problem: Zonotron cannot treat project outputs as black boxes
+## 1. Starting problem: Saum cannot treat project outputs as black boxes
 
-The broader Zonotron architecture delegates *how reconciliation is performed* to individual projects. A Test Harness project could use Ralph, Spec Kit, custom agents or some other methodology without Zonotron needing to manage its internal workflow.
+The broader Saum architecture delegates *how reconciliation is performed* to individual projects. A Test Harness project could use Ralph, Spec Kit, custom agents or some other methodology without Saum needing to manage its internal workflow.
 
-However, Zonotron remains responsible for accepting the resulting state into its authoritative artifact graph.
+However, Saum remains responsible for accepting the resulting state into its authoritative artifact graph.
 
 For example:
 
 - Architecture A13 is settled.
 - Test Harness produces candidate TH5, claiming conformance with A13.
-- Zonotron must determine whether TH5 actually satisfies its obligations before accepting it.
+- Saum must determine whether TH5 actually satisfies its obligations before accepting it.
 
 Two concerns emerged:
 
-1. **Zonotron must retain settlement authority.** Accepting a project's claim of completion is insufficient.
+1. **Saum must retain settlement authority.** Accepting a project's claim of completion is insufficient.
 2. **Validation requires understanding the resulting artifacts.** Arbitrary formats and heterogeneous project methodologies make universal validation difficult.
 
-The second concern initially suggested that Zonotron would need to perfectly parse and understand every project's artifacts.
+The second concern initially suggested that Saum would need to perfectly parse and understand every project's artifacts.
 
 ### Emerging conclusion
 
-**Zonotron must own settlement authority, but it does not need to implement every validation procedure itself.**
+**Saum must own settlement authority, but it does not need to implement every validation procedure itself.**
 
 Validation can be performed by separate processes, including deterministic tools, independent agents, domain-specific validators, experiments and human reviewers.
 
-Zonotron controls the acceptance process, evidence requirements and settlement decision.
+Saum controls the acceptance process, evidence requirements and settlement decision.
 
 This distinguishes three responsibilities:
 
@@ -39,7 +39,7 @@ This distinguishes three responsibilities:
 | -------------------------------------------- | ---------------------------------------------------------- |
 | Produce candidate artifact                   | Project                                                    |
 | Evaluate conformance to upstream obligations | Independent validation process                             |
-| Decide whether evidence warrants acceptance  | Zonotron, under configured human/automatic approval policy |
+| Decide whether evidence warrants acceptance  | Saum, under configured human/automatic approval policy |
 
 Importantly, the validation process is not infallible either. Independent evaluation reduces certain risks but does not guarantee correctness.
 
@@ -88,7 +88,7 @@ Projects can use arbitrary internal methodologies, but resulting artifacts need 
 
 A project producing an unfamiliar proprietary format with no available interpreter or meaningful validation evidence cannot expect automatic conformance verification.
 
-Zonotron may require additional tooling, alternative evidence or human review.
+Saum may require additional tooling, alternative evidence or human review.
 
 ### C. Validation contract
 
@@ -173,7 +173,7 @@ That is an execution hypothesis, not a binding requirement to implement those ex
 
 A project may discover better approaches and revise its plan.
 
-Zonotron should validate the resulting scenario coverage, not merely confirm that the four original tasks were completed.
+Saum should validate the resulting scenario coverage, not merely confirm that the four original tasks were completed.
 
 **The objective constrains the plan; the plan does not redefine the objective.**
 
@@ -183,7 +183,7 @@ Zonotron should validate the resulting scenario coverage, not merely confirm tha
 
 The user's proposal was to make the negotiated reconciliation breakdown a permanent, versioned artifact that evolves after each accepted increment.
 
-This appears to resolve much of the previous uncertainty about how much task decomposition Zonotron must perform upfront.
+This appears to resolve much of the previous uncertainty about how much task decomposition Saum must perform upfront.
 
 ### Example: creating a Test Harness from nothing
 
@@ -191,7 +191,7 @@ Architecture A13 defines scenarios S01–S20.
 
 The Test Harness project initially has no implementation.
 
-Zonotron requests:
+Saum requests:
 
 > Produce a Test Harness satisfying the scenario-testing obligations defined by A13.
 
@@ -203,13 +203,13 @@ The project proposes Plan P1:
 [ ] TH3: S06–S20 covered
 ```
 
-Zonotron records P1, optionally after human review.
+Saum records P1, optionally after human review.
 
 The project implements TH1 and submits a candidate.
 
-Zonotron validates the candidate against the obligations of Scenario 01, potentially with human review.
+Saum validates the candidate against the obligations of Scenario 01, potentially with human review.
 
-Once TH1 is accepted as an internal checkpoint, Zonotron asks the project to update its remaining plan.
+Once TH1 is accepted as an internal checkpoint, Saum asks the project to update its remaining plan.
 
 The project reports that S01 uncovered unexpected infrastructure complexity and proposes P2:
 
@@ -220,7 +220,7 @@ The project reports that S01 uncovered unexpected infrastructure complexity and 
 [ ] TH4: S06–S20 covered
 ```
 
-Zonotron stores P2 while retaining P1 and the reason for the revision.
+Saum stores P2 while retaining P1 and the reason for the revision.
 
 This continues until the full reconciliation objective has been met and validated.
 
@@ -234,7 +234,7 @@ This continues until the full reconciliation objective has been met and validate
 
 **The overall obligation remains known.** An incomplete planning horizon must not mean that remaining requirements have been forgotten or implicitly dropped.
 
-**Zonotron can expose current progress.** UI/CLI can show the project reconciling toward A13, its current planned increment, accepted checkpoints and outstanding scope.
+**Saum can expose current progress.** UI/CLI can show the project reconciling toward A13, its current planned increment, accepted checkpoints and outstanding scope.
 
 **Plan changes and scope changes are different operations.** Reorganizing S02–S05 into smaller increments is ordinary recalibration. Deciding S17 is no longer required changes the reconciliation obligation and needs appropriate authority.
 
@@ -263,7 +263,7 @@ Internal project tasks:
 
 The project can freely reorganize the internal tasks without requesting approval for every change.
 
-Zonotron is primarily interested in the externally meaningful increment and its acceptance criteria.
+Saum is primarily interested in the externally meaningful increment and its acceptance criteria.
 
 This also clarifies the role of the original milestone concept.
 
@@ -318,7 +318,7 @@ Every scenario is tested individually, but the complete Test Harness cannot run 
 
 All increments might appear individually complete while the overall objective remains unmet.
 
-Zonotron should assess plan coverage during negotiation and validate the complete artifact before final settlement.
+Saum should assess plan coverage during negotiation and validate the complete artifact before final settlement.
 
 ### B. Soundness
 
@@ -348,7 +348,7 @@ This is primarily an efficiency/design concern, not necessarily a conformance fa
 
 It can be addressed during planning, local project review or comparative evaluation.
 
-Zonotron may flag it without requiring every implementation choice to be centrally approved.
+Saum may flag it without requiring every implementation choice to be centrally approved.
 
 ---
 
@@ -356,7 +356,7 @@ Zonotron may flag it without requiring every implementation choice to be central
 
 Validating only the latest increment is insufficient.
 
-When TH2 is completed, Zonotron should consider:
+When TH2 is completed, Saum should consider:
 
 - Did TH2 establish its new obligations?
 - Does the resulting candidate still satisfy previously accepted TH1 obligations?
@@ -377,7 +377,7 @@ The latter is required before global settlement in the conservative model.
 
 ## 10. Projects can propose validation evidence, but cannot be their own sole authority
 
-An interesting idea was that the project's decomposition could inform how Zonotron validates its output.
+An interesting idea was that the project's decomposition could inform how Saum validates its output.
 
 For example:
 
@@ -411,11 +411,11 @@ The emerging model is:
 Settled upstream revision
           |
           v
-Zonotron establishes overall
+Saum establishes overall
 reconciliation objective
           |
           v
-Zonotron ↔ Project negotiation
+Saum ↔ Project negotiation
   - meaningful increments
   - initial planning horizon
   - dependencies/order
@@ -455,7 +455,7 @@ Continue until full scope covered
 Final integrated reconciliation review
           |
           v
-Zonotron/human settlement
+Saum/human settlement
           |
           v
 New globally settled project revision
@@ -485,7 +485,7 @@ For an MVC, validation could initially rely heavily on independent LLM review, a
 
 The MVC does not need universal artifact parsing, sophisticated automated trust calibration or partial downstream consumption.
 
-The key thing to demonstrate is that a large reconciliation can be progressively planned, executed, evaluated and settled without Zonotron having to manage the project's internal development methodology.
+The key thing to demonstrate is that a large reconciliation can be progressively planned, executed, evaluated and settled without Saum having to manage the project's internal development methodology.
 
 ---
 
@@ -496,10 +496,10 @@ The key thing to demonstrate is that a large reconciliation can be progressively
 - How are validation contracts represented and attached to project dependencies?
 - Who defines and maintains them?
 - Should validation contracts themselves be versioned and independently settled?
-- How does Zonotron choose among deterministic tests, semantic reviewers, formal tools, experiments and human review?
+- How does Saum choose among deterministic tests, semantic reviewers, formal tools, experiments and human review?
 - What should happen when available evidence cannot establish an obligation?
 - How do we distinguish insufficient evidence from an actual conformance failure?
-- How much semantic understanding must Zonotron possess versus delegate to independent validators?
+- How much semantic understanding must Saum possess versus delegate to independent validators?
 
 ### Settlement and scope
 
@@ -513,9 +513,9 @@ The key thing to demonstrate is that a large reconciliation can be progressively
 
 ### Planning and negotiation
 
-- What specific questions should Zonotron ask a project when negotiating its reconciliation plan?
-- How does Zonotron identify missing obligations in a proposed plan?
-- How much of the decomposition should be generated by Zonotron versus proposed by the project?
+- What specific questions should Saum ask a project when negotiating its reconciliation plan?
+- How does Saum identify missing obligations in a proposed plan?
+- How much of the decomposition should be generated by Saum versus proposed by the project?
 - What triggers replanning?
 - Must the project provide a revised plan after every increment, or only when needed?
 - How are plan revisions accepted and their reasons preserved?
@@ -528,9 +528,9 @@ The key thing to demonstrate is that a large reconciliation can be progressively
 - How is reliability measured per project and change category?
 - Should auto-accepted changes be randomly sampled for independent review?
 - What confidence/evidence standards justify removing human approval gates?
-- How does Zonotron avoid expensive review of routine changes while still catching subtle semantic failures?
+- How does Saum avoid expensive review of routine changes while still catching subtle semantic failures?
 - Can the project propose a validation strategy that is cheaper but equally convincing?
-- When should Zonotron request experiments or independent alternative implementations?
+- When should Saum request experiments or independent alternative implementations?
 
 ### Provenance and observability
 
@@ -546,7 +546,7 @@ The key thing to demonstrate is that a large reconciliation can be progressively
 
 The strongest conclusions from this branch are:
 
-**1. Zonotron owns settlement authority, not necessarily validation execution.**
+**1. Saum owns settlement authority, not necessarily validation execution.**
 
 Validation is pluggable and may require domain-specific tools and human judgment.
 
@@ -584,15 +584,15 @@ Routine changes may be automatically accepted, while consequential changes requi
 
 **10. Universal automatic semantic validation remains an open limitation.**
 
-Zonotron can provide an auditable, configurable process for establishing confidence, but cannot guarantee perfect conformance of arbitrary artifacts.
+Saum can provide an auditable, configurable process for establishing confidence, but cannot guarantee perfect conformance of arbitrary artifacts.
 
 ## Final synthesis
 
 The emerging model is:
 
-> **Zonotron coordinates reconciliation toward stable, authoritative objectives through persistent, dynamically negotiated settlement plans. Projects independently determine how to execute the work and can revise their plans as they learn. Zonotron validates meaningful increments against upstream obligations, preserves accepted progress and provenance, and settles the complete project revision only when sufficient evidence establishes conformance.**
+> **Saum coordinates reconciliation toward stable, authoritative objectives through persistent, dynamically negotiated settlement plans. Projects independently determine how to execute the work and can revise their plans as they learn. Saum validates meaningful increments against upstream obligations, preserves accepted progress and provenance, and settles the complete project revision only when sufficient evidence establishes conformance.**
 
-This extends the earlier Zonotron concept without changing its fundamental direction: a graph of independently authoritative artifacts, advanced through controlled reconciliation rather than blind regeneration.
+This extends the earlier Saum concept without changing its fundamental direction: a graph of independently authoritative artifacts, advanced through controlled reconciliation rather than blind regeneration.
 
 The most important new concept is the **living settlement plan**, which connects high-level reconciliation objectives to project-local execution while keeping planning flexible and validation independent.
 

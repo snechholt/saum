@@ -21,7 +21,7 @@ The manager's role follows from the artifact and objective. Nothing requires a u
 
 ## 2. Alternatives and workshops as experimentation
 
-The user observed that producing several annual-plan alternatives and discussing them in a workshop resembles the experiment/review/settlement pattern. Zonotron could request isolated alternatives, summarize meaningful differences and record the human choice.
+The user observed that producing several annual-plan alternatives and discussing them in a workshop resembles the experiment/review/settlement pattern. Saum could request isolated alternatives, summarize meaningful differences and record the human choice.
 
 That does not imply every school process must use this workflow. A project may already have its own alternatives process. The point is that generic candidate comparison can make sense outside software and therefore may not require knowledge of worktrees or coding agents in the core abstraction.
 

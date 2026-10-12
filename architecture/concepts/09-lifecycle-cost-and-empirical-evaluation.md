@@ -58,7 +58,7 @@ The system still needs evidence that the additional knowledge is worth its produ
 
 The supplied review records eight trajectories, four rejected ready claims, useful partial mechanisms, one public false success despite partial worker state, and preserved manager ownership of the Scenario 01 frontier. It supports the need for independent evaluation and the information value of comparing partial attempts.
 
-It does not establish an accepted Scenario 01 foundation, a reliable model ranking, a blind successful execution of the revised manager prompts, or a cost-effective complete Zonotron loop.
+It does not establish an accepted Scenario 01 foundation, a reliable model ranking, a blind successful execution of the revised manager prompts, or a cost-effective complete Saum loop.
 
 Reported usage and finished worker process intervals were lower bounds where logs were incomplete. They were not monetary cost, elapsed campaign wall time or subsystem-level attribution. The review could not conclude that a small registry fixture would provide equivalent accepted coverage more cheaply.
 
@@ -94,7 +94,7 @@ The early critique proposed comparing a good single-agent workflow, a specificat
 
 Such comparisons should use equivalent objectives and count manager/reviewer work, not only worker tokens. The discussions do not provide results from them.
 
-The strongest competing approach may be composition of existing tools plus modest metadata, rather than one named vendor. The question is which semantics remain genuinely difficult without Zonotron.
+The strongest competing approach may be composition of existing tools plus modest metadata, rather than one named vendor. The question is which semantics remain genuinely difficult without Saum.
 
 ## 12. Possible maturity signals
 

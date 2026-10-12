@@ -12,11 +12,11 @@ A useful acceptance claim is relational:
 
 That is more meaningful than "the artifact looks good in isolation." It also makes the policy and its limitations part of what later reviewers can understand.
 
-The validation branch explicitly rejects the idea that a project report alone can settle a candidate. It equally rejects the need for Zonotron to implement every domain-specific validator itself.
+The validation branch explicitly rejects the idea that a project report alone can settle a candidate. It equally rejects the need for Saum to implement every domain-specific validator itself.
 
 ## 2. Three responsibilities
 
-The project produces candidate state. An independent validation process evaluates relevant conformance claims. Zonotron, under human or configured automatic approval policy, decides whether that evidence warrants acceptance.
+The project produces candidate state. An independent validation process evaluates relevant conformance claims. Saum, under human or configured automatic approval policy, decides whether that evidence warrants acceptance.
 
 A validator can be a deterministic test suite, specialized tool, independent agent, experiment, human reviewer or combination. The appropriate choice depends on the relationship and change, not merely the artifact extension.
 
@@ -110,7 +110,7 @@ Occasional independent audits of auto-accepted work were suggested as a way to t
 
 Human review can occur inside a project: approve a proposed decomposition, compare design alternatives or review a code change. That does not automatically make each reviewed item an independently governed project.
 
-Zonotron-level settlement has a different consequence: it changes what other projects may treat as accepted authority. Planning approval, internal checkpoint acceptance and global release should be distinguishable even if the same human performs all three in a prototype.
+Saum-level settlement has a different consequence: it changes what other projects may treat as accepted authority. Planning approval, internal checkpoint acceptance and global release should be distinguishable even if the same human performs all three in a prototype.
 
 This distinction preserves the user's desire to wear different review hats without forcing an artificial organizational hierarchy into the graph.
 

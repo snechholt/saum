@@ -4,11 +4,11 @@
 
 ## Systems and actors
 
-**Zonotron:** the provisional name of the overarching reconciliation/governance system. It is not Traust.
+**Saum:** the provisional name of the overarching reconciliation/governance system. It is not Traust.
 
 **Traust:** the deployer/orchestrator product used in the motivating test-harness experiments. Its Scenario 01 exercises a full upgrade flow, including image discovery, persistence, runtime actions, routing, and ordering guarantees.
 
-**Cosmos:** the hypothetical legacy application used to discuss reconstructing an authority graph from existing code. It is an example, not a proposed Zonotron subsystem.
+**Cosmos:** the hypothetical legacy application used to discuss reconstructing an authority graph from existing code. It is an example, not a proposed Saum subsystem.
 
 **Project:** a unit with its own work products, local methodology and potentially independently settled state. A Git repository is the immediate mental model, not an established universal requirement. A project is neither automatically one microservice nor one task.
 
@@ -32,7 +32,7 @@
 
 **Artifact dependency graph:** durable relationships among governed project states. This is distinct from the execution graph used to advance them.
 
-**Execution DAG:** the operational arrangement of analysis, workers, experiments, review, approval and synthesis. The early model put this under Zonotron broadly; its later scope remains contested.
+**Execution DAG:** the operational arrangement of analysis, workers, experiments, review, approval and synthesis. The early model put this under Saum broadly; its later scope remains contested.
 
 **Context relationship:** permission or encouragement to consult an artifact for rationale or background. Whether this can remain non-governing when it contains applicable requirements is an unresolved boundary issue.
 
@@ -102,7 +102,7 @@ The validation branch uses `TH1`, `TH2`, etc. as increment labels as well as har
 
 **MVC / MVP:** both appear in the discussions. The branch says MVC for a minimal initial implementation but does not expand the acronym. The dossier preserves that ambiguity rather than defining a new product milestone.
 
-**Allium:** the candidate language/tool used inside a proposed Behaviour Model project. The project responsibility should remain understandable without requiring Allium to be part of Zonotron's core.
+**Allium:** the candidate language/tool used inside a proposed Behaviour Model project. The project responsibility should remain understandable without requiring Allium to be part of Saum's core.
 
 ## Sources
 

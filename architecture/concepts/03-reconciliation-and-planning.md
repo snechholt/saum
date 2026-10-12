@@ -12,13 +12,13 @@ Preservation is not absolute. A material change may justify reopening an accepte
 
 ## 2. Global and local impact analysis
 
-Zonotron knows the governed project relationships, accepted input revisions, cross-project dependencies and overall priorities. A project knows its actual internal state, local domain, coupling and chosen method. Neither should be assumed to know the other's world completely.
+Saum knows the governed project relationships, accepted input revisions, cross-project dependencies and overall priorities. A project knows its actual internal state, local domain, coupling and chosen method. Neither should be assumed to know the other's world completely.
 
-For Architecture A12 -> A13 introducing Baz, Zonotron can identify potentially affected projects and request local impact analysis. Design and Test Harness may respond separately. Implementation may not yet be ready because its future input set depends on both.
+For Architecture A12 -> A13 introducing Baz, Saum can identify potentially affected projects and request local impact analysis. Design and Test Harness may respond separately. Implementation may not yet be ready because its future input set depends on both.
 
 A realistic implementation project may later receive changes involving Baz itself, Foo/Bar interactions, timeline entries, exports, APIs and tenant templates. Those consequences need not be different projects. They create a substantial intake problem inside one project.
 
-The working response is negotiation. Zonotron and the project shape a viable decomposition together rather than assuming either one can produce the final plan in isolation.
+The working response is negotiation. Saum and the project shape a viable decomposition together rather than assuming either one can produce the final plan in isolation.
 
 ## 3. Three separate objects of reasoning
 
@@ -87,9 +87,9 @@ These distinctions can coexist. A settlement increment may contain several tasks
 
 Potential planning concerns include local coherence, cross-project ordering, evidence quality, reviewability, resource cost, risk and independence. A single static "optimal task size" cannot capture all of them.
 
-A project can propose that one request is consumable as a feature spec, another needs prerequisites, and another should be split because the evidence would otherwise be uninterpretable. Zonotron can ask whether units can be combined or whether an apparently local decision affects another dependency.
+A project can propose that one request is consumable as a feature spec, another needs prerequisites, and another should be split because the evidence would otherwise be uninterpretable. Saum can ask whether units can be combined or whether an apparently local decision affects another dependency.
 
-A useful candidate stopping condition is: the receiving project considers the work executable, and Zonotron considers the plan compatible with the global objective and acceptance constraints. That is a good-enough contract, not proof that no better plan exists.
+A useful candidate stopping condition is: the receiving project considers the work executable, and Saum considers the plan compatible with the global objective and acceptance constraints. That is a good-enough contract, not proof that no better plan exists.
 
 The termination policy, disagreement handling and approval rights remain open. Endless planning would recreate the cost problem the system is meant to solve.
 
@@ -105,9 +105,9 @@ No universal rule was settled. "A small OCI fixture is cheaper/better" remained 
 
 ## 9. Prioritization across projects
 
-The user asked whether Zonotron or individual projects should prioritize work. The working distinction is global intent and dependencies versus local execution realities.
+The user asked whether Saum or individual projects should prioritize work. The working distinction is global intent and dependencies versus local execution realities.
 
-Zonotron can care about business importance, readiness, bottlenecks and risk reduction across the graph. A project can explain what must be established first locally and which work benefits from being grouped. A negotiated plan should reconcile those views rather than imposing an arbitrary ordering from either side.
+Saum can care about business importance, readiness, bottlenecks and risk reduction across the graph. A project can explain what must be established first locally and which work benefits from being grouped. A negotiated plan should reconcile those views rather than imposing an arbitrary ordering from either side.
 
 The discussions did not choose a scoring function, resource-allocation policy, or a single definition of priority. Critical-path progress, cheapest useful settlement and reduction of consequential uncertainty may point to different next actions.
 

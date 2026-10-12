@@ -1,6 +1,6 @@
 ## Problem
 
-Zonotron normally assumes an authority graph where upstream artifacts constrain downstream ones, for example:
+Saum normally assumes an authority graph where upstream artifacts constrain downstream ones, for example:
 
 ```text
 Architecture
@@ -32,7 +32,7 @@ infer Design
 infer Architecture
 ```
 
-This raises a semantic problem: during reconstruction, Design and Architecture need to conform to the existing implementation, which seems to reverse Zonotron's normal authority relationships.
+This raises a semantic problem: during reconstruction, Design and Architecture need to conform to the existing implementation, which seems to reverse Saum's normal authority relationships.
 
 That would be undesirable. If Design genuinely depended on Implementation, later implementation changes could incorrectly make Design stale. More importantly, existing code should not automatically become normative: legacy implementation contains bugs, accidental behavior, debt, and historical decisions that should not necessarily be preserved.
 
@@ -70,7 +70,7 @@ They do **not** mean:
 
 > this artifact is normatively governed by the implementation.
 
-This lets Zonotron preserve its normal semantics while still climbing upward from code.
+This lets Saum preserve its normal semantics while still climbing upward from code.
 
 ## Current behavior versus intended behavior
 
@@ -96,7 +96,7 @@ The 500 response might later be classified as a bug rather than a required behav
 
 The same distinction applies to Design.
 
-Zonotron can reconstruct an **as-built design** from the implementation:
+Saum can reconstruct an **as-built design** from the implementation:
 
 ```text
 AuthService directly manipulates billing tables
@@ -219,7 +219,7 @@ candidate Architecture A0
 
 Architecture settlement is therefore inherently partly human.
 
-## Zonotron can propose the target artifact graph
+## Saum can propose the target artifact graph
 
 A legacy project might initially contain only:
 
@@ -227,7 +227,7 @@ A legacy project might initially contain only:
 Implementation
 ```
 
-During onboarding, Zonotron can inspect Cosmos and propose possible governance structures, for example:
+During onboarding, Saum can inspect Cosmos and propose possible governance structures, for example:
 
 ```text
 Architecture
@@ -255,9 +255,9 @@ It should be:
 
 A small legacy service may need only Architecture → Implementation. A large Cosmos-like system may justify several layers.
 
-## Why this fits Zonotron
+## Why this fits Saum
 
-This reinforces the idea that Zonotron is about **reconciliation and accumulated authoritative state**, not document generation.
+This reinforces the idea that Saum is about **reconciliation and accumulated authoritative state**, not document generation.
 
 Legacy onboarding is not:
 
@@ -284,10 +284,10 @@ Implementation I0/I1
              ↓ future change
 
 Architecture A1
-→ normal Zonotron reconciliation
+→ normal Saum reconciliation
 ```
 
-This suggests adding **bootstrap/reconstruction** as a first-class Zonotron lifecycle posture alongside foundation discovery, buildout, and maintenance.
+This suggests adding **bootstrap/reconstruction** as a first-class Saum lifecycle posture alongside foundation discovery, buildout, and maintenance.
 
 Its purpose is:
 

@@ -60,9 +60,9 @@ Low-risk work can eventually be grouped. The important property is an interpreta
 
 The main discussion moved through three positions.
 
-First, Zonotron owned the full experiment DAG: workers, monitors, reviewers, synthesis and gates. Second, narrowing Zonotron to cross-project reconciliation suggested putting experiments inside projects as a reusable capability. Third, the user proposed that Zonotron can branch a project and request multiple ordinary candidate reconciliations without knowing its method.
+First, Saum owned the full experiment DAG: workers, monitors, reviewers, synthesis and gates. Second, narrowing Saum to cross-project reconciliation suggested putting experiments inside projects as a reusable capability. Third, the user proposed that Saum can branch a project and request multiple ordinary candidate reconciliations without knowing its method.
 
-The third position preserves generic orchestration. Each isolated project instance can use Spec Kit, Ralph, plain agents or humans. Zonotron can compare the results against the same objective and retain provenance.
+The third position preserves generic orchestration. Each isolated project instance can use Spec Kit, Ralph, plain agents or humans. Saum can compare the results against the same objective and retain provenance.
 
 But this still expands its responsibilities: isolation, dispatch, comparison and resource use are workflow concerns. Whether multi-candidate reconciliation is core, optional infrastructure, or a service available to projects remains tentative. The dossier does not choose one silently.
 
@@ -101,7 +101,7 @@ Synthesis should avoid an incoherent mixture of every attractive fragment. A fre
 
 ## 10. Guidance for the next cohort
 
-The user clarified that reducing permanent Ralph prompt growth does not mean withholding useful opinions. Zonotron should be able to provide milestone-specific guidance: a known dangerous assumption, promising options, previous failed boundaries, or an uncertainty that remains open.
+The user clarified that reducing permanent Ralph prompt growth does not mean withholding useful opinions. Saum should be able to provide milestone-specific guidance: a known dangerous assumption, promising options, previous failed boundaries, or an uncertainty that remains open.
 
 Such guidance is separate from stable worker protocol and durable accepted project decisions. It can expire after foundation settlement or be reflected in the repository. It must not smuggle an unresolved upstream obligation or rejected interface proposal into the next attempt as a mandatory rule.
 

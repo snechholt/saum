@@ -14,7 +14,7 @@ These Markdown files were copied unchanged from the supplied `review(1).zip`. Th
 | [Candidate campaign](review/manager-candidates/CAMPAIGN.md) | Campaign-specific inputs and authority. |
 | [Candidate evaluator](review/manager-candidates/PROMPT_EVALUATE.md) | Acceptance derivation, causal review and filtered findings. |
 | [Candidate synthesis](review/manager-candidates/PROMPT_SYNTHESIZE.md) | Learnings and proposed informative experiment guidance. |
-| [One frozen v5 worker prompt](v5_20261003_234931/terra-high1/ralph/PROMPT.md) | Historical worker protocol reference, not an adopted Zonotron interface. |
+| [One frozen v5 worker prompt](v5_20261003_234931/terra-high1/ralph/PROMPT.md) | Historical worker protocol reference, not an adopted Saum interface. |
 
 ## Important source limits
 
