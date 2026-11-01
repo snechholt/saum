@@ -37,7 +37,11 @@ func TestFactoryDefaultsAreSnapshotsNotRelocations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if path != filepath.Join(second.WorkspaceRoot, "goal-worktree") {
+	canonicalRoot, err := filepath.EvalSymlinks(second.WorkspaceRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if path != filepath.Join(canonicalRoot, "goal-worktree") {
 		t.Fatal("worktree not beside main", path)
 	}
 	if _, err := os.Stat(filepath.Join(second.RepositoryPath, ".git")); err != nil {

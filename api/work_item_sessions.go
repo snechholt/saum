@@ -26,37 +26,59 @@ func (s *Store) cancelQueuedSession(id string) (int64, error) {
 	}
 	return count, tx.Commit()
 }
-func (s *Store) sessionThread(session Session) (string, error) {
-	if session.Kind == PlanningSession {
-		return "", nil
-	}
+
+type threadReader interface{ QueryRow(string, ...any) *sql.Row }
+
+func readThread(reader threadReader, session Session) (string, error) {
 	var thread string
 	var err error
-	if session.Kind == ImplementationSession {
-		err = s.db.QueryRow("SELECT thread_id FROM goal_workflows WHERE plan_session_id=?", session.ParentSessionID).Scan(&thread)
-	} else {
-		err = s.db.QueryRow("SELECT COALESCE((SELECT thread_id FROM factory_agents WHERE factory_id=story.factory_id),'') FROM user_stories AS story WHERE id=?", session.StoryID).Scan(&thread)
+	switch session.Kind {
+	case PlanningSession:
+		err = reader.QueryRow("SELECT thread_id FROM sessions WHERE id=?", session.ID).Scan(&thread)
+	case ImplementationSession:
+		err = reader.QueryRow("SELECT thread_id FROM goal_workflows WHERE plan_session_id=?", session.ParentSessionID).Scan(&thread)
+	case SummarySession:
+		err = reader.QueryRow("SELECT COALESCE((SELECT thread_id FROM factory_agents WHERE factory_id=story.factory_id),'') FROM user_stories AS story WHERE id=?", session.StoryID).Scan(&thread)
+	default:
+		return "", fmt.Errorf("unknown session kind")
 	}
 	return thread, err
 }
+func (s *Store) sessionThread(session Session) (string, error) { return readThread(s.db, session) }
 func (s *Store) saveSessionThread(session Session, thread string) error {
+	if !safeComponent(thread) {
+		return fmt.Errorf("invalid native thread identity")
+	}
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
+	expected, err := readThread(tx, session)
+	if err != nil {
+		return err
+	}
+	if expected != "" && expected != thread {
+		return fmt.Errorf("native thread identity changed: requested %s, observed %s", expected, thread)
+	}
+	var observed string
+	if err := tx.QueryRow("SELECT thread_id FROM sessions WHERE id=?", session.ID).Scan(&observed); err != nil {
+		return err
+	}
+	if observed != "" && observed != thread {
+		return fmt.Errorf("native thread identity changed during the turn")
+	}
 	if _, err := tx.Exec("UPDATE sessions SET thread_id=? WHERE id=?", thread, session.ID); err != nil {
 		return err
 	}
-	if session.Kind == ImplementationSession {
-		if _, err := tx.Exec("UPDATE goal_workflows SET thread_id=? WHERE plan_session_id=?", thread, session.ParentSessionID); err != nil {
-			return err
-		}
+	switch session.Kind {
+	case ImplementationSession:
+		_, err = tx.Exec("UPDATE goal_workflows SET thread_id=? WHERE plan_session_id=?", thread, session.ParentSessionID)
+	case SummarySession:
+		_, err = tx.Exec("INSERT INTO factory_agents(factory_id,thread_id) SELECT factory_id,? FROM user_stories WHERE id=? ON CONFLICT(factory_id) DO UPDATE SET thread_id=excluded.thread_id", thread, session.StoryID)
 	}
-	if session.Kind == SummarySession {
-		if _, err := tx.Exec("INSERT INTO factory_agents(factory_id,thread_id) SELECT factory_id,? FROM user_stories WHERE id=? ON CONFLICT(factory_id) DO UPDATE SET thread_id=excluded.thread_id", thread, session.StoryID); err != nil {
-			return err
-		}
+	if err != nil {
+		return err
 	}
 	return tx.Commit()
 }
@@ -94,6 +116,16 @@ func finishWorkItemSession(tx *sql.Tx, id string, status SessionStatus, message 
 	return err
 }
 func (s *Store) workItemTurnReady(session Session) error {
+	if session.ThreadID == "" {
+		return fmt.Errorf("Codex did not report its native thread identity")
+	}
+	expected, err := s.sessionThread(session)
+	if err != nil {
+		return err
+	}
+	if expected != session.ThreadID {
+		return fmt.Errorf("native thread continuity was not established")
+	}
 	item, err := s.assignedWorkItem(session.ID)
 	if err != nil {
 		return err

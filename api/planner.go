@@ -133,12 +133,32 @@ func (p *Planner) worktree(ctx context.Context, factoryID, sessionID string) (st
 	if err != nil {
 		return "", err
 	}
+	if err := os.MkdirAll(workspace, 0700); err != nil {
+		return "", err
+	}
+	if err := rejectDirectoryLink(workspace); err != nil {
+		return "", err
+	}
+	if err := rejectDirectoryLink(repo); err != nil && !os.IsNotExist(err) {
+		return "", err
+	}
 	if err := os.MkdirAll(repo, 0700); err != nil {
 		return "", err
 	}
+	canonicalRoot, err := canonicalDirectory(workspace)
+	if err != nil {
+		return "", err
+	}
+	repo, err = canonicalDirectory(repo)
+	if err != nil {
+		return "", err
+	}
+	if !insideDirectory(canonicalRoot, repo) {
+		return "", fmt.Errorf("repository resolves outside factory")
+	}
+	workspace = canonicalRoot
 	git := func(args ...string) error {
-		command := exec.CommandContext(ctx, "git", append([]string{"-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", "-C", repo}, args...)...)
-		output, err := command.CombinedOutput()
+		output, err := gitOutput(ctx, repo, args...)
 		if err != nil {
 			return fmt.Errorf("git %s: %w: %s", args[0], err, output)
 		}
@@ -151,7 +171,7 @@ func (p *Planner) worktree(ctx context.Context, factoryID, sessionID string) (st
 	} else if err != nil {
 		return "", err
 	}
-	if err := exec.CommandContext(ctx, "git", "-C", repo, "rev-parse", "--verify", "HEAD").Run(); err != nil {
+	if _, err := gitOutput(ctx, repo, "rev-parse", "--verify", "HEAD"); err != nil {
 		if err := git("-c", "user.name=Saum", "-c", "user.email=saum@localhost", "commit", "--allow-empty", "-m", "chore: initialize factory workspace"); err != nil {
 			return "", err
 		}
@@ -237,14 +257,14 @@ func (p *Planner) execute(parent context.Context, session Session) {
 		return
 	}
 	config := fmt.Sprintf("mcp_servers.saum={url=%s,bearer_token_env_var=\"SAUM_SESSION_TOKEN\",required=true,default_tools_approval_mode=\"approve\"}", strconv.Quote(p.MCPURL))
-	args := []string{"exec", "--json", "--color", "never", "--ignore-user-config", "--ephemeral", "--sandbox", "workspace-write", "-c", "approval_policy=\"never\"", "-c", config, "-C", path, "-"}
+	args := []string{"exec", "--json", "--color", "never", "--ignore-user-config", "--ephemeral", "--sandbox", "workspace-write", "-c", "approval_policy=\"never\"", "-c", config, "-C", ".", "-"}
 	if session.Kind != PlanningSession {
 		thread, err := p.Store.sessionThread(session)
 		if err != nil {
 			finish(SessionFailed, err)
 			return
 		}
-		args = []string{"-C", path, "exec"}
+		args = []string{"-C", ".", "exec"}
 		if thread != "" {
 			args = append(args, "resume")
 		}
@@ -258,8 +278,22 @@ func (p *Planner) execute(parent context.Context, session Session) {
 		}
 		args = append(args, "-")
 	}
-	cmd := exec.CommandContext(ctx, p.Codex, args...)
-	cmd.Dir = path
+	owned, err := p.Store.ownedWorkspace(ctx, factoryID, path)
+	if err != nil {
+		finish(SessionFailed, err)
+		return
+	}
+	pinned, err := owned.pin()
+	if err != nil {
+		finish(SessionFailed, err)
+		return
+	}
+	defer pinned.Close()
+	cmd, err := directoryCommand(ctx, pinned, p.Codex, args...)
+	if err != nil {
+		finish(SessionFailed, err)
+		return
+	}
 	cmd.Env = []string{}
 	for _, value := range os.Environ() {
 		if !strings.HasPrefix(value, "SAUM_SESSION_TOKEN=") {
@@ -291,6 +325,10 @@ func (p *Planner) execute(parent context.Context, session Session) {
 		return
 	}
 	identity := processIdentity(cmd.Process.Pid)
+	for attempt := 0; attempt < 20 && isDirectoryTrampoline(identity); attempt++ {
+		time.Sleep(5 * time.Millisecond)
+		identity = processIdentity(cmd.Process.Pid)
+	}
 	if _, err = p.Store.db.Exec("UPDATE sessions SET process_id=?,process_identity=? WHERE id=?", cmd.Process.Pid, identity, session.ID); err != nil {
 		_ = cmd.Cancel()
 		_ = cmd.Wait()
@@ -302,6 +340,7 @@ func (p *Planner) execute(parent context.Context, session Session) {
 	scanner.Buffer(make([]byte, 4096), 8<<20)
 	turnFinished := false
 	turnError := ""
+	var protocolErr error
 	for scanner.Scan() {
 		var event struct {
 			Type     string `json:"type"`
@@ -316,6 +355,7 @@ func (p *Planner) execute(parent context.Context, session Session) {
 		switch event.Type {
 		case "thread.started":
 			if err = p.Store.saveSessionThread(session, event.ThreadID); err != nil {
+				protocolErr = err
 				cancel()
 			}
 		case "turn.completed":
@@ -334,6 +374,8 @@ func (p *Planner) execute(parent context.Context, session Session) {
 	waitErr := cmd.Wait()
 	current, readErr := p.Store.session(session.ID)
 	switch {
+	case protocolErr != nil:
+		finish(SessionFailed, protocolErr)
 	case ctx.Err() != nil:
 		finish(SessionCancelled, ctx.Err())
 	case scanErr != nil:
