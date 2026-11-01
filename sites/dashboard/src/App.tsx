@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Button } from "@cloudflare/kumo/components/button";
 import { Factory, FolderSimple, Plus, SquaresFour, X } from "@phosphor-icons/react";
 import { createProject, listProjects, type Project } from "./api";
@@ -10,6 +10,8 @@ export default function App() {
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
   const [error, setError] = useState("");
+  const [loadFailed, setLoadFailed] = useState(false);
+  const focusName = useCallback((element: HTMLInputElement | null) => element?.focus(), []);
 
   useEffect(() => {
     let ignore = false;
@@ -18,7 +20,10 @@ export default function App() {
         if (!ignore) setProjects(items);
       })
       .catch(() => {
-        if (!ignore) setError("Could not load projects.");
+        if (!ignore) {
+          setLoadFailed(true);
+          setError("Could not load projects. Reload to try again.");
+        }
       })
       .finally(() => {
         if (!ignore) setLoading(false);
@@ -65,7 +70,7 @@ export default function App() {
             variant="primary"
             size="sm"
             onClick={() => setCreating(true)}
-            disabled={loading || creating}
+            disabled={loading || loadFailed || creating}
           >
             <Plus size={15} />
             New project
@@ -93,9 +98,7 @@ export default function App() {
               onChange={(event) => setName(event.target.value)}
               maxLength={80}
               disabled={saving}
-              ref={(element) => {
-                element?.focus();
-              }}
+              ref={focusName}
             />
             <div>
               <Button
@@ -124,7 +127,7 @@ export default function App() {
         )}
         {loading ? (
           <output className="empty-state">Loading…</output>
-        ) : projects.length === 0 ? (
+        ) : loadFailed ? null : projects.length === 0 ? (
           <p className="empty-state">No projects</p>
         ) : (
           <div className="project-grid">
