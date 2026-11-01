@@ -110,13 +110,13 @@ export function ImplementationProgress({
       setBusy(false);
     }
   }
-  async function resume() {
+  async function resume(withReply = false) {
     if (!active) return;
     setBusy(true);
     setError("");
     try {
       const next =
-        active.status === "blocked" && reply.trim()
+        withReply && active.status === "blocked" && reply.trim()
           ? await replyToWorkItem(active.id, reply)
           : await retryImplementation(session.storyId);
       onSession(next.id);
@@ -168,7 +168,7 @@ export function ImplementationProgress({
                   disabled={(!reply.trim() && active.replies.length === 0) || busy}
                   loading={busy}
                   onClick={() => {
-                    void resume();
+                    void resume(true);
                   }}
                 >
                   <Play size={16} />
@@ -176,7 +176,7 @@ export function ImplementationProgress({
               </div>
             </>
           )}
-          {active.status === "failed" && (
+          {(active.status === "failed" || active.status === "blocked") && (
             <div className="form-actions">
               <Button
                 variant="secondary"
