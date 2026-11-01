@@ -14,11 +14,14 @@
     "lint": "oxlint --type-aware --deny-warnings .",
     "fmt": "oxfmt --write .",
     "fmt:check": "oxfmt --check .",
-    "typecheck": "tsc -p sites/dashboard",
-    "test": "cd api && go test -race ./...",
+    "typecheck": "tsc -p packages/ui && tsc -p sites/dashboard",
+    "test": "bun run test:ui && bun run test:api",
+    "test:ui": "bun test packages/ui",
+    "test:api": "cd api && go test -race ./...",
     "check": "bun run fmt:check && bun run lint && bun run typecheck && bun run test"
   },
   "devDependencies": {
+    "@types/bun": "^1.4.4",
     "@types/node": "^26.6.6",
     "oxfmt": "^0.75.0",
     "oxlint": "^1.90.0",

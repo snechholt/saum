@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "@cloudflare/kumo/styles/standalone";
+import "@saum/ui/styles.css";
 import "./styles.css";
 import App from "./App";
 
