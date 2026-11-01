@@ -13,6 +13,7 @@ import {
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { UserStory } from "./api";
+import type { PlanComment } from "./sessions";
 import { isActive, planningLabel, type Session, type SessionEvent } from "./sessions";
 import { PlanningBadge } from "./PlanningBadge";
 import { parseTranscript, type TranscriptEntry } from "./transcript";
@@ -40,21 +41,23 @@ function ToolEntry({ entry }: { entry: Exclude<TranscriptEntry, { kind: "message
         {entry.output && <pre>{entry.output}</pre>}
       </details>
     );
-  const label =
-    entry.name === "saum.submit_item"
-      ? entry.status === "completed"
-        ? "Item saved"
-        : "Submit item"
-      : entry.name === "saum.complete_plan"
-        ? entry.status === "completed"
-          ? "Plan submitted"
-          : "Complete plan"
-        : entry.name === "search"
-          ? "Find Saum functions"
-          : entry.name === "execute"
-            ? "Run Saum functions"
-            : entry.name;
-  const title = typeof entry.input["title"] === "string" ? entry.input["title"] : "";
+  const labels: Record<string, { pending: string; done: string }> = {
+    "saum.submit_item": { pending: "Submit item", done: "Item saved" },
+    "saum.update_item": { pending: "Update item", done: "Item updated" },
+    "saum.remove_item": { pending: "Remove item", done: "Item removed" },
+    "saum.resolve_feedback": { pending: "Address feedback", done: "Feedback addressed" },
+    "saum.complete_plan": { pending: "Complete plan", done: "Plan submitted" },
+    search: { pending: "Find Saum functions", done: "Find Saum functions" },
+    execute: { pending: "Run Saum functions", done: "Run Saum functions" },
+  };
+  const names = labels[entry.name],
+    label = names ? (entry.status === "completed" ? names.done : names.pending) : entry.name;
+  const title =
+    typeof entry.input["title"] === "string"
+      ? entry.input["title"]
+      : typeof entry.input["resolution"] === "string"
+        ? entry.input["resolution"]
+        : "";
   const code =
     typeof entry.input["code"] === "string"
       ? entry.input["code"]
@@ -83,6 +86,7 @@ export function AgentTranscript({
   sessionId,
   sessions,
   events,
+  feedback,
   error,
   stopping,
   onSelect,
@@ -93,6 +97,7 @@ export function AgentTranscript({
   sessionId: string;
   sessions: Session[];
   events: SessionEvent[];
+  feedback: PlanComment[];
   error: string;
   stopping: boolean;
   onSelect: (id: string) => void;
@@ -160,6 +165,17 @@ export function AgentTranscript({
           <p>{story.title}</p>
           <div>{story.goal || "No goal specified."}</div>
         </div>
+        {feedback.length > 0 && (
+          <div className="story-chat-message review-chat-message">
+            <span className="message-label">Feedback</span>
+            {feedback.map((comment) => (
+              <div className="review-chat-comment" key={comment.id}>
+                <blockquote>{comment.quote}</blockquote>
+                <p>{comment.body}</p>
+              </div>
+            ))}
+          </div>
+        )}
         {parsed.entries.map((entry) =>
           entry.kind === "message" ? (
             <article className="assistant-message" key={entry.id}>

@@ -175,6 +175,71 @@ h1 {
   margin: 0;
   white-space: pre-wrap;
 }
+.plan-text {
+  white-space: pre-wrap;
+  user-select: text;
+}
+.plan-annotatable .plan-text {
+  cursor: text;
+}
+.plan-text mark {
+  background: var(--color-kumo-warning-tint);
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--text-color-kumo-warning);
+  text-underline-offset: 3px;
+}
+.feedback-popup {
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  padding: 16px 20px;
+}
+.feedback-popup blockquote {
+  margin: 12px 0;
+  max-height: 100px;
+  overflow: auto;
+  white-space: pre-wrap;
+  color: var(--text-color-kumo-subtle);
+  border-left: 2px solid var(--color-kumo-fill);
+  padding-left: 12px;
+}
+.plan-comments {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+.plan-comment {
+  background: var(--color-kumo-elevated);
+  border-left: 2px solid var(--color-kumo-fill);
+  border-radius: 0 6px 6px 0;
+  padding: 8px 12px;
+}
+.plan-comment-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-color-kumo-subtle);
+}
+.plan-comment blockquote,
+.review-chat-comment blockquote {
+  border-left: 2px solid var(--color-kumo-fill);
+  padding-left: 12px;
+  margin: 8px 0;
+  white-space: pre-wrap;
+  color: var(--text-color-kumo-subtle);
+}
+.plan-comment p,
+.review-chat-comment p {
+  margin: 8px 0;
+  white-space: pre-wrap;
+}
+.review-chat-message .review-chat-comment p {
+  color: var(--text-color-kumo-default);
+  font-weight: 400;
+}
+.review-chat-comment + .review-chat-comment {
+  margin-top: 16px;
+}
 .story-artifacts {
   margin-top: 20px;
   color: var(--text-color-kumo-subtle);

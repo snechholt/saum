@@ -1,5 +1,21 @@
 import { parsePlanningStatus, request, type PlanningStatus } from "./api";
 
+export type ReviewStatus = "pending" | "approved" | "changes_requested";
+export type PlanField = "title" | "description" | "acceptanceCriteria";
+export type PlanComment = {
+  id: string;
+  sessionId: string;
+  itemId: string;
+  field: PlanField;
+  criterionIndex: number;
+  start: number;
+  end: number;
+  quote: string;
+  body: string;
+  batchId: string;
+  createdAt: string;
+};
+
 export type Session = {
   id: string;
   storyId: string;
@@ -11,6 +27,10 @@ export type Session = {
   planSubmitted: boolean;
   createdAt: string;
   finishedAt: string;
+  parentSessionId: string;
+  feedbackBatchId: string;
+  reviewStatus: ReviewStatus;
+  reviewedAt: string;
 };
 export type ActionItem = {
   id: string;
@@ -20,7 +40,12 @@ export type ActionItem = {
   description: string;
   acceptanceCriteria: string[];
 };
-export type SessionDetail = { session: Session; items: ActionItem[] };
+export type SessionDetail = {
+  session: Session;
+  items: ActionItem[];
+  comments: PlanComment[];
+  receivedFeedback: PlanComment[];
+};
 export type SessionEvent = { id: number; stream: string; data: string };
 
 function record(value: unknown): Record<string, unknown> {
@@ -32,6 +57,41 @@ function text(value: Record<string, unknown>, key: string): string {
   const result = value[key];
   if (typeof result !== "string") throw new Error(`Invalid session field: ${key}`);
   return result;
+}
+function reviewStatus(value: unknown): ReviewStatus {
+  if (value === "pending" || value === "approved" || value === "changes_requested") return value;
+  throw new Error("Invalid plan review status.");
+}
+export function parsePlanComment(value: unknown): PlanComment {
+  const row = record(value),
+    field = row["field"];
+  if (field !== "title" && field !== "description" && field !== "acceptanceCriteria")
+    throw new Error("Invalid feedback field.");
+  const index = row["criterionIndex"],
+    start = row["start"],
+    end = row["end"];
+  if (
+    typeof index !== "number" ||
+    !Number.isSafeInteger(index) ||
+    typeof start !== "number" ||
+    !Number.isSafeInteger(start) ||
+    typeof end !== "number" ||
+    !Number.isSafeInteger(end)
+  )
+    throw new Error("Invalid comment anchor.");
+  return {
+    id: text(row, "id"),
+    sessionId: text(row, "sessionId"),
+    itemId: text(row, "itemId"),
+    field,
+    criterionIndex: index,
+    start,
+    end,
+    quote: text(row, "quote"),
+    body: text(row, "body"),
+    batchId: text(row, "batchId"),
+    createdAt: text(row, "createdAt"),
+  };
 }
 export function parseSession(value: unknown): Session {
   const row = record(value);
@@ -47,6 +107,10 @@ export function parseSession(value: unknown): Session {
     planSubmitted: row["planSubmitted"],
     createdAt: text(row, "createdAt"),
     finishedAt: text(row, "finishedAt"),
+    parentSessionId: text(row, "parentSessionId"),
+    feedbackBatchId: text(row, "feedbackBatchId"),
+    reviewStatus: reviewStatus(row["reviewStatus"]),
+    reviewedAt: text(row, "reviewedAt"),
   };
 }
 function parseItem(value: unknown): ActionItem {
@@ -69,9 +133,15 @@ export async function getSession(id: string): Promise<SessionDetail> {
   const row = record(await request(`sessions/${encodeURIComponent(id)}`)),
     items = row["items"];
   if (!Array.isArray(items)) throw new Error("Invalid session items.");
+  const comments = row["comments"],
+    received = row["receivedFeedback"];
+  if (!Array.isArray(comments) || !Array.isArray(received))
+    throw new Error("Invalid plan feedback.");
   return {
     session: parseSession(row["session"]),
     items: items.map((item: unknown) => parseItem(item)),
+    comments: comments.map((comment: unknown) => parsePlanComment(comment)),
+    receivedFeedback: received.map((comment: unknown) => parsePlanComment(comment)),
   };
 }
 export async function getSessionEvents(id: string, after: number): Promise<SessionEvent[]> {

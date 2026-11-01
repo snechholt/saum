@@ -3,28 +3,12 @@ import { Link, useNavigate, useParams } from "react-router";
 import { Button } from "@cloudflare/kumo/components/button";
 import { LayerCard } from "@cloudflare/kumo/components/layer-card";
 import { ArrowClockwise, CaretRight } from "@phosphor-icons/react";
-import { DataTable, type Column } from "@saum/ui";
 import { AgentTranscript } from "./AgentTranscript";
 import { getStory, type StoryDetail } from "./story-api";
-import { cancelSession, isActive, retryPlanning, type ActionItem } from "./sessions";
+import { cancelSession, isActive, retryPlanning, type Session } from "./sessions";
 import { usePlanningSession } from "./usePlanningSession";
+import { PlanReview } from "./PlanReview";
 
-const columns: Column<ActionItem>[] = [
-  { id: "title", header: "Item", value: (item) => item.title },
-  { id: "description", header: "Work", value: (item) => item.description },
-  {
-    id: "criteria",
-    header: "Acceptance criteria",
-    value: (item) => item.acceptanceCriteria.join(" · "),
-    render: (item) => (
-      <ul className="item-criteria">
-        {item.acceptanceCriteria.map((criterion, index) => (
-          <li key={index}>{criterion}</li>
-        ))}
-      </ul>
-    ),
-  },
-];
 function StoryView({ detail, sessionId }: { detail: StoryDetail; sessionId: string }) {
   const navigate = useNavigate();
   const session = usePlanningSession(sessionId);
@@ -80,7 +64,14 @@ function StoryView({ detail, sessionId }: { detail: StoryDetail; sessionId: stri
             aria-label="Plan story"
             title="Plan again"
             loading={busy}
-            disabled={!detail.story.goal || isActive(detail.story.planningStatus) || busy}
+            disabled={
+              !detail.story.goal ||
+              !current ||
+              current.reviewStatus !== "pending" ||
+              !!session.detail?.comments.some((comment) => !comment.batchId) ||
+              isActive(detail.story.planningStatus) ||
+              busy
+            }
             onClick={() => {
               void retry();
             }}
@@ -97,13 +88,13 @@ function StoryView({ detail, sessionId }: { detail: StoryDetail; sessionId: stri
           <h2 className="section-title">Goal</h2>
           <p>{detail.story.goal || "—"}</p>
         </LayerCard>
-        <h2 className="section-title">Actionable items</h2>
-        <DataTable
-          rows={items}
-          columns={columns}
-          rowKey={(item) => item.id}
-          label="Actionable items"
-          emptyMessage={isActive(detail.story.planningStatus) ? "Planning…" : "No items submitted"}
+        <PlanReview
+          session={current}
+          items={items}
+          comments={matches ? (session.detail?.comments ?? []) : []}
+          latest={detail.story.sessionId === sessionId}
+          refresh={session.refresh}
+          onRevision={(revision: Session) => selectSession(revision.id)}
         />
         {current?.worktree && (
           <details className="story-artifacts">
@@ -118,6 +109,7 @@ function StoryView({ detail, sessionId }: { detail: StoryDetail; sessionId: stri
         sessionId={sessionId}
         sessions={detail.sessions}
         events={matches ? session.events : []}
+        feedback={matches ? (session.detail?.receivedFeedback ?? []) : []}
         error={matches ? session.error : "Session does not belong to this story."}
         stopping={busy}
         onSelect={selectSession}

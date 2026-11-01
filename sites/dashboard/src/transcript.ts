@@ -102,10 +102,23 @@ export function parseTranscript(events: readonly SessionEvent[]): {
       const value = json(chunk);
       if (!object(value)) continue;
       const name = functionName(text(value["tool"]));
-      if (name !== "saum.submit_item" && name !== "saum.complete_plan") continue;
+      if (
+        ![
+          "saum.submit_item",
+          "saum.update_item",
+          "saum.remove_item",
+          "saum.resolve_feedback",
+          "saum.complete_plan",
+        ].includes(name)
+      )
+        continue;
       const input = object(value["input"]) ? value["input"] : {};
       const id =
-        name === "saum.submit_item" ? `function:${text(input["key"])}` : `function:${name}`;
+        name === "saum.submit_item"
+          ? `function:${text(input["key"])}`
+          : name === "saum.complete_plan"
+            ? `function:${name}`
+            : `function:${name}:${row.id}`;
       entries.set(id, {
         id,
         kind: "tool",
