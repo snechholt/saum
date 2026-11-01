@@ -33,9 +33,9 @@ function StoryView({ detail, sessionId }: { detail: StoryDetail; sessionId: stri
     setBusy(true);
     setError("");
     try {
-      const attempt = await (
-        current?.kind === "implementation" ? retryImplementation : retryPlanning
-      )(detail.story.id);
+      const attempt = await (current?.kind !== "planning" ? retryImplementation : retryPlanning)(
+        detail.story.id,
+      );
       selectSession(attempt.id);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not start session.");
@@ -70,12 +70,13 @@ function StoryView({ detail, sessionId }: { detail: StoryDetail; sessionId: stri
           <Button
             variant="secondary"
             shape="square"
-            aria-label={current?.kind === "implementation" ? "Retry implementation" : "Plan story"}
-            title={current?.kind === "implementation" ? "Retry implementation" : "Plan again"}
+            aria-label={current?.kind !== "planning" ? "Retry work item" : "Plan story"}
+            title={current?.kind !== "planning" ? "Retry work item" : "Plan again"}
             loading={busy}
             disabled={
               !detail.story.goal ||
               !current ||
+              (current.kind !== "planning" && detail.story.goalStatus !== "failed") ||
               (current.kind === "planning" &&
                 (current.reviewStatus !== "pending" ||
                   !!session.detail?.comments.some((comment) => !comment.batchId))) ||
@@ -98,10 +99,12 @@ function StoryView({ detail, sessionId }: { detail: StoryDetail; sessionId: stri
           <h2 className="section-title">Goal</h2>
           <p>{detail.story.goal || "—"}</p>
         </LayerCard>
-        {matches && current && session.detail?.implementation && (
+        {matches && current && session.detail?.workflow && (
           <ImplementationProgress
             session={current}
-            implementation={session.detail.implementation}
+            workflow={session.detail.workflow}
+            refresh={session.refresh}
+            onSession={selectSession}
           />
         )}
         <PlanReview

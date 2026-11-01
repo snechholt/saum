@@ -29,7 +29,13 @@ const columns: Column<UserStory>[] = [
     id: "planning",
     header: "Status",
     value: (story) => story.planningStatus,
-    render: (story) => <PlanningBadge status={story.planningStatus} kind={story.sessionKind} />,
+    render: (story) => (
+      <PlanningBadge
+        status={story.planningStatus}
+        kind={story.sessionKind}
+        goalStatus={story.goalStatus}
+      />
+    ),
   },
 ];
 type StoryList =
@@ -79,7 +85,7 @@ export function FactoryStories({ factory }: { factory: Factory }) {
     setError("");
     try {
       const session = await (
-        story.sessionKind === "implementation" ? retryImplementation : retryPlanning
+        story.sessionKind !== "planning" ? retryImplementation : retryPlanning
       )(story.id);
       setList((current) =>
         current.status === "ready"
@@ -172,9 +178,14 @@ export function FactoryStories({ factory }: { factory: Factory }) {
                 variant="ghost"
                 size="sm"
                 shape="square"
-                aria-label={`Retry planning ${story.title}`}
-                title="Plan again"
-                disabled={!story.goal || isActive(story.planningStatus) || !!retrying}
+                aria-label={`Retry ${story.title}`}
+                title={story.sessionKind === "planning" ? "Plan again" : "Retry work item"}
+                disabled={
+                  !story.goal ||
+                  isActive(story.planningStatus) ||
+                  !!retrying ||
+                  (story.sessionKind !== "planning" && story.goalStatus !== "failed")
+                }
                 loading={retrying === story.id}
                 onClick={() => {
                   void retry(story);

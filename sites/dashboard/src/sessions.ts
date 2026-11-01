@@ -47,21 +47,45 @@ export type ActionItem = {
   description: string;
   acceptanceCriteria: string[];
 };
-export type ImplementationItem = {
-  key: string;
-  title: string;
-  status: "pending" | "running" | "completed" | "blocked";
+export type WorkItemStatus =
+  | "pending"
+  | "queued"
+  | "working"
+  | "blocked"
+  | "review_requested"
+  | "summarizing"
+  | "awaiting_review"
+  | "approved"
+  | "failed";
+export type CriterionSubmission = { criterionIndex: number; summary: string; evidence: string[] };
+export type ExecutiveReview = {
+  id: string;
+  workItemId: string;
+  goalSessionId: string;
+  summarySessionId: string;
   summary: string;
+  verification: string;
+  risks: string[];
+  decision: ReviewStatus;
+  feedback: string;
+  createdAt: string;
+  reviewedAt: string;
 };
-export type Implementation = {
+export type WorkItem = ActionItem & {
   planSessionId: string;
-  submitted: boolean;
-  summary: string;
-  items: ImplementationItem[];
+  position: number;
+  status: WorkItemStatus;
+  blocker: string;
+  currentSessionId: string;
+  lastGoalSessionId: string;
+  criteria: CriterionSubmission[];
+  reviews: ExecutiveReview[];
+  replies: string[];
 };
+export type GoalWorkflow = { planSessionId: string; items: WorkItem[] };
 export type SessionDetail = {
   planSession: Session;
-  implementation: Implementation | null;
+  workflow: GoalWorkflow | null;
   session: Session;
   items: ActionItem[];
   comments: PlanComment[];
@@ -151,31 +175,81 @@ function parseItem(value: unknown): ActionItem {
     }),
   };
 }
-export function parseImplementation(value: unknown): Implementation | null {
+function strings(value: unknown): string[] {
+  if (!Array.isArray(value)) throw new Error("Expected a list.");
+  return value.map((entry: unknown) => {
+    if (typeof entry !== "string") throw new Error("Expected text.");
+    return entry;
+  });
+}
+function integer(value: unknown): number {
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0)
+    throw new Error("Invalid index.");
+  return value;
+}
+function workItemStatus(value: unknown): WorkItemStatus {
+  switch (value) {
+    case "pending":
+    case "queued":
+    case "working":
+    case "blocked":
+    case "review_requested":
+    case "summarizing":
+    case "awaiting_review":
+    case "approved":
+    case "failed":
+      return value;
+    default:
+      throw new Error("Invalid work item status.");
+  }
+}
+function parseExecutiveReview(value: unknown): ExecutiveReview {
+  const row = record(value);
+  return {
+    id: text(row, "id"),
+    workItemId: text(row, "workItemId"),
+    goalSessionId: text(row, "goalSessionId"),
+    summarySessionId: text(row, "summarySessionId"),
+    summary: text(row, "summary"),
+    verification: text(row, "verification"),
+    risks: strings(row["risks"]),
+    decision: reviewStatus(row["decision"]),
+    feedback: text(row, "feedback"),
+    createdAt: text(row, "createdAt"),
+    reviewedAt: text(row, "reviewedAt"),
+  };
+}
+export function parseWorkflow(value: unknown): GoalWorkflow | null {
   if (value === null) return null;
   const row = record(value),
     items = row["items"];
-  if (typeof row["submitted"] !== "boolean" || !Array.isArray(items))
-    throw new Error("Invalid implementation.");
+  if (!Array.isArray(items)) throw new Error("Invalid goal workflow.");
   return {
     planSessionId: text(row, "planSessionId"),
-    submitted: row["submitted"],
-    summary: text(row, "summary"),
     items: items.map((value: unknown) => {
       const item = record(value),
-        status = item["status"];
-      if (
-        status !== "pending" &&
-        status !== "running" &&
-        status !== "completed" &&
-        status !== "blocked"
-      )
-        throw new Error("Invalid item progress.");
+        criteria = item["criteria"],
+        reviews = item["reviews"];
+      if (!Array.isArray(criteria) || !Array.isArray(reviews))
+        throw new Error("Invalid work item review.");
       return {
-        key: text(item, "key"),
-        title: text(item, "title"),
-        summary: text(item, "summary"),
-        status,
+        ...parseItem(item),
+        planSessionId: text(item, "planSessionId"),
+        position: integer(item["position"]),
+        status: workItemStatus(item["status"]),
+        blocker: text(item, "blocker"),
+        currentSessionId: text(item, "currentSessionId"),
+        lastGoalSessionId: text(item, "lastGoalSessionId"),
+        replies: strings(item["replies"]),
+        reviews: reviews.map((value: unknown) => parseExecutiveReview(value)),
+        criteria: criteria.map((value: unknown) => {
+          const criterion = record(value);
+          return {
+            criterionIndex: integer(criterion["criterionIndex"]),
+            summary: text(criterion, "summary"),
+            evidence: strings(criterion["evidence"]),
+          };
+        }),
       };
     }),
   };
@@ -190,20 +264,20 @@ export async function getSession(id: string): Promise<SessionDetail> {
     throw new Error("Invalid plan feedback.");
   const session = parseSession(row["session"]),
     planSession = parseSession(row["planSession"]),
-    implementation = parseImplementation(row["implementation"]);
+    workflow = parseWorkflow(row["workflow"]);
   if (
     planSession.kind !== "planning" ||
-    (session.kind === "implementation"
-      ? !implementation ||
-        planSession.id !== implementation.planSessionId ||
+    (session.kind !== "planning"
+      ? !workflow ||
+        planSession.id !== workflow.planSessionId ||
         planSession.reviewStatus !== "approved"
-      : implementation !== null || planSession.id !== session.id)
+      : planSession.id !== session.id)
   )
     throw new Error("Invalid plan context.");
   return {
     session,
     planSession,
-    implementation,
+    workflow,
     items: items.map((item: unknown) => parseItem(item)),
     comments: comments.map((comment: unknown) => parsePlanComment(comment)),
     receivedFeedback: received.map((comment: unknown) => parsePlanComment(comment)),
@@ -238,9 +312,14 @@ export function isActive(status: PlanningStatus): boolean {
 }
 export function planningLabel(status: PlanningStatus, kind: SessionKind = "planning"): string {
   if (kind === "implementation") {
-    if (status === "completed") return "Built";
+    if (status === "completed") return "Review requested";
     if (status === "running") return "Building";
     if (status === "queued") return "Build queued";
+  }
+  if (kind === "summary") {
+    if (status === "completed") return "Summary ready";
+    if (status === "running") return "Summarizing";
+    if (status === "queued") return "Summary queued";
   }
   return status === "completed"
     ? "Planned"

@@ -468,6 +468,43 @@ h1 {
   margin: 0;
   padding-left: 20px;
 }
+.implementation-progress,
+.work-item-review,
+.executive-summary {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.work-item-review {
+  padding: 16px 20px;
+}
+.work-item-review p,
+.executive-summary li {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.executive-summary ul,
+.criterion-evidence ol,
+.criterion-evidence ul {
+  padding-inline-start: 20px;
+}
+.executive-summary ul,
+.criterion-evidence ul {
+  list-style: disc;
+}
+.criterion-evidence ol {
+  list-style: decimal;
+}
+.criterion-evidence summary {
+  cursor: pointer;
+}
+.criterion-evidence li {
+  margin-block: 8px;
+}
+.executive-summary blockquote {
+  border-inline-start: 2px solid var(--color-kumo-hairline);
+  padding-inline-start: 12px;
+}
 .mobile-navigation {
   display: none;
 }

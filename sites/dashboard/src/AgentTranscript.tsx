@@ -46,12 +46,15 @@ function ToolEntry({ entry }: { entry: Exclude<TranscriptEntry, { kind: "message
     "saum.update_item": { pending: "Update item", done: "Item updated" },
     "saum.remove_item": { pending: "Remove item", done: "Item removed" },
     "saum.resolve_feedback": { pending: "Address feedback", done: "Feedback addressed" },
-    "saum.start_item": { pending: "Start item", done: "Item started" },
-    "saum.complete_item": { pending: "Complete item", done: "Item completed" },
-    "saum.block_item": { pending: "Report blocker", done: "Item blocked" },
-    "saum.complete_implementation": {
-      pending: "Complete implementation",
-      done: "Implementation submitted",
+    "saum.work_item.submit_acceptance_criteria": {
+      pending: "Submit criterion",
+      done: "Criterion evidence saved",
+    },
+    "saum.work_item.request_review": { pending: "Request review", done: "Review requested" },
+    "saum.work_item.report_blocker": { pending: "Report blocker", done: "Item blocked" },
+    "saum.work_item.submit_executive_summary": {
+      pending: "Submit executive summary",
+      done: "Executive summary ready",
     },
     "saum.complete_plan": { pending: "Complete plan", done: "Plan submitted" },
     search: { pending: "Find Saum functions", done: "Find Saum functions" },
@@ -128,12 +131,13 @@ export function AgentTranscript({
       <header className="agent-panel-header">
         <div>
           <Robot size={20} />
-          <strong>Codex</strong>
+          <strong>{session?.kind === "summary" ? "Factory agent" : "Codex"}</strong>
         </div>
         <div className="session-actions">
           <PlanningBadge
             status={session?.status ?? story.planningStatus}
             kind={session?.kind ?? story.sessionKind}
+            goalStatus={session?.id === story.sessionId ? story.goalStatus : undefined}
           />
           {session && active && (
             <Button
@@ -159,7 +163,7 @@ export function AgentTranscript({
             }}
             items={sessions.map((attempt, index) => ({
               value: attempt.id,
-              label: `${attempt.kind === "implementation" ? "Build" : "Plan"} ${sessions.length - index} · ${planningLabel(attempt.status, attempt.kind)}`,
+              label: `${attempt.kind === "summary" ? "Factory review" : attempt.kind === "implementation" ? "Work" : "Plan"} ${sessions.length - index} · ${planningLabel(attempt.status, attempt.kind)}`,
             }))}
           />
         </div>

@@ -1,6 +1,26 @@
-export type SessionKind = "planning" | "implementation";
+export type SessionKind = "planning" | "implementation" | "summary";
+export type GoalStatus =
+  | "planning"
+  | "working"
+  | "blocked"
+  | "awaiting_review"
+  | "completed"
+  | "failed";
+export function parseGoalStatus(value: unknown): GoalStatus {
+  switch (value) {
+    case "planning":
+    case "working":
+    case "blocked":
+    case "awaiting_review":
+    case "completed":
+    case "failed":
+      return value;
+    default:
+      throw new Error("Invalid goal status.");
+  }
+}
 export function parseSessionKind(value: unknown): SessionKind {
-  if (value === "planning" || value === "implementation") return value;
+  if (value === "planning" || value === "implementation" || value === "summary") return value;
   throw new Error("Invalid session kind.");
 }
 export type Factory = { id: string; name: string };
@@ -20,6 +40,7 @@ export type UserStory = {
   planningStatus: PlanningStatus;
   sessionId: string;
   sessionKind: SessionKind;
+  goalStatus: GoalStatus;
 };
 
 export function parsePlanningStatus(value: unknown): PlanningStatus {
@@ -58,6 +79,7 @@ export function parseUserStory(value: unknown): UserStory {
     !("planningStatus" in value) ||
     !("sessionId" in value) ||
     !("sessionKind" in value) ||
+    !("goalStatus" in value) ||
     typeof value.sessionId !== "string"
   )
     throw new Error("Invalid story session.");
@@ -68,6 +90,7 @@ export function parseUserStory(value: unknown): UserStory {
     planningStatus: parsePlanningStatus(value.planningStatus),
     sessionId: value.sessionId,
     sessionKind: parseSessionKind(value.sessionKind),
+    goalStatus: parseGoalStatus(value.goalStatus),
   };
 }
 
