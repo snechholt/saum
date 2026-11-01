@@ -90,6 +90,34 @@ h1 {
 .table-link:hover {
   text-decoration: underline;
 }
+.form-fields {
+  display: grid;
+  gap: 16px;
+}
+.story-form-surface {
+  max-width: 560px;
+  margin-top: 16px;
+}
+.section-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 24px;
+}
+.section-toolbar .section-title {
+  margin: 0;
+}
+.story-title {
+  display: block;
+  min-width: 140px;
+  font-weight: 500;
+}
+.story-goal {
+  display: block;
+  max-width: 72ch;
+  white-space: pre-wrap;
+}
 .section-title {
   font-size: 16px;
   font-weight: 600;

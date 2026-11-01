@@ -11,7 +11,7 @@ import {
 import { DataTable, type Column } from "@saum/ui";
 import { deleteFactory, listFactories, type Factory } from "./api";
 import { FactoryForm } from "./FactoryForm";
-import { FactoryProjects } from "./FactoryProjects";
+import { FactoryStories } from "./FactoryStories";
 import { DeleteFactoryDialog } from "./DeleteFactoryDialog";
 
 type FactoryList =
@@ -140,7 +140,7 @@ export default function App() {
           <span>Saum</span>
         </div>
         {selected ? (
-          <FactoryProjects key={selected.id} factory={selected} />
+          <FactoryStories key={selected.id} factory={selected} />
         ) : (
           <>
             <header className="page-title">

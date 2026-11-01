@@ -8,5 +8,5 @@ before changing the dashboard or shared UI. This is the official
 - Content and controls use 14px text. Density comes from spacing, not tiny type.
 - Do not override root font size, letter spacing, or Kumo control typography.
 - Keep action buttons icon-only with accessible names and tooltips.
-- Keep the interface minimal. Do not add explanatory copy or project features without asking.
+- Keep the interface minimal. Do not add explanatory copy or domain features without asking.
 - Run checks, build, and inspect the actual browser UI before calling a visual change done.

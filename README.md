@@ -1,11 +1,12 @@
 # Saum
 
 A **Factory** is Saum's top-level concept. Create, rename, or delete Factories
-from a sortable, filterable table. Open a Factory to see its Projects.
-Factories containing Projects cannot be deleted.
+from a sortable, filterable table. A Factory contains **User stories**, not Projects.
+Each story has a title and a high-level goal: what the user should be able to
+achieve, not how to implement it. Open a Factory to create and browse its stories.
+Factories containing User stories cannot be deleted.
 
-Project behavior and creation are not built yet. There are no agents, issues,
-or architecture workflows.
+There are no implementation plans, agents, issues, or shipping workflows yet.
 
 ## Develop
 
@@ -19,9 +20,11 @@ bun dev
 Open **http://127.0.0.1:5173**. The same command starts the Go API on
 `127.0.0.1:8080`; Ctrl-C stops both.
 
-Factories and their Projects are stored in SQLite at `.saum/factory.sqlite`,
-which is not committed. Earlier unscoped Projects are imported once into a
-**Saum** Factory. Any original `.saum/projects.json` is left untouched.
+Factories and their User stories are stored in SQLite at `.saum/factory.sqlite`,
+which is not committed. Existing entries from the earlier Project prototype are
+preserved as User stories, keeping their IDs, titles, and Factory ownership.
+Imported entries may have no goal; no goal is invented for them. Any original
+`.saum/projects.json` is left untouched.
 The Go driver is pure Go; no database service or C toolchain is required.
 
 ## Layout

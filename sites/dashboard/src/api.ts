@@ -1,5 +1,24 @@
 export type Factory = { id: string; name: string };
-export type Project = { id: string; name: string };
+export type UserStory = { id: string; title: string; goal: string };
+export type StoryDraft = Pick<UserStory, "title" | "goal">;
+
+function parseUserStory(value: unknown): UserStory {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    !("id" in value) ||
+    typeof value.id !== "string" ||
+    !value.id ||
+    !("title" in value) ||
+    typeof value.title !== "string" ||
+    !value.title ||
+    !("goal" in value) ||
+    typeof value.goal !== "string"
+  ) {
+    throw new Error("The server returned an invalid user story.");
+  }
+  return { id: value.id, title: value.title, goal: value.goal };
+}
 
 type NamedItem = { id: string; name: string };
 function parseNamedItem(value: unknown): NamedItem {
@@ -58,6 +77,17 @@ export async function updateFactory(id: Factory["id"], name: string): Promise<Fa
 export async function deleteFactory(id: Factory["id"]): Promise<void> {
   await request(`factories/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
-export async function listProjects(factoryID: Factory["id"]): Promise<Project[]> {
-  return parseList(await request(`factories/${encodeURIComponent(factoryID)}/projects`));
+export async function listStories(factoryID: Factory["id"]): Promise<UserStory[]> {
+  const body = await request(`factories/${encodeURIComponent(factoryID)}/stories`);
+  if (!Array.isArray(body)) throw new Error("The server returned an invalid story list.");
+  return body.map((value: unknown) => parseUserStory(value));
+}
+export async function createStory(factoryID: Factory["id"], draft: StoryDraft): Promise<UserStory> {
+  return parseUserStory(
+    await request(`factories/${encodeURIComponent(factoryID)}/stories`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(draft),
+    }),
+  );
 }
