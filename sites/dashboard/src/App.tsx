@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { Button } from "@cloudflare/kumo/components/button";
-import { Factory as FactoryIcon, Plus, SquaresFour } from "@phosphor-icons/react";
+import {
+  Factory as FactoryIcon,
+  PencilSimple,
+  Plus,
+  SquaresFour,
+  Trash,
+} from "@phosphor-icons/react";
 import { DataTable, type Column } from "@saum/ui";
 import { deleteFactory, listFactories, type Factory } from "./api";
 import { FactoryForm } from "./FactoryForm";
@@ -119,6 +125,9 @@ export default function App() {
               <Button
                 variant="primary"
                 size="sm"
+                shape="square"
+                aria-label="New factory"
+                title="New factory"
                 onClick={() => {
                   setForm({ mode: "create" });
                   setError("");
@@ -126,7 +135,6 @@ export default function App() {
                 disabled={list.status !== "ready" || form !== null || deleting !== null}
               >
                 <Plus size={15} />
-                New factory
               </Button>
             </header>
             {error && (
@@ -159,27 +167,31 @@ export default function App() {
                   <>
                     <Button
                       variant="ghost"
-                      size="sm"
+                      size="xs"
                       disabled={form !== null || deleting !== null}
+                      shape="square"
+                      title="Edit"
                       aria-label={`Edit ${factory.name}`}
                       onClick={() => {
                         setForm({ mode: "edit", factory });
                         setError("");
                       }}
                     >
-                      Edit
+                      <PencilSimple size={15} />
                     </Button>
                     <Button
                       variant="ghost"
-                      size="sm"
+                      size="xs"
                       disabled={form !== null || deleting !== null}
+                      shape="square"
+                      title="Delete"
                       aria-label={`Delete ${factory.name}`}
                       loading={deleting === factory.id}
                       onClick={() => {
                         void removeFactory(factory);
                       }}
                     >
-                      Delete
+                      <Trash size={15} />
                     </Button>
                   </>
                 )}

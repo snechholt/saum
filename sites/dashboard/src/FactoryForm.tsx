@@ -1,5 +1,6 @@
 import { useCallback, useState, type FormEvent } from "react";
 import { Button } from "@cloudflare/kumo/components/button";
+import { Check, Plus, X } from "@phosphor-icons/react";
 import { createFactory, updateFactory, type Factory } from "./api";
 
 export function FactoryForm({
@@ -52,17 +53,29 @@ export function FactoryForm({
         </p>
       )}
       <div>
-        <Button variant="ghost" size="sm" type="button" onClick={onCancel} disabled={saving}>
-          Cancel
+        <Button
+          variant="ghost"
+          size="xs"
+          shape="square"
+          type="button"
+          aria-label="Cancel"
+          title="Cancel"
+          onClick={onCancel}
+          disabled={saving}
+        >
+          <X size={14} />
         </Button>
         <Button
           variant="primary"
-          size="sm"
+          size="xs"
+          shape="square"
+          aria-label={factory ? "Save" : "Create"}
+          title={factory ? "Save" : "Create"}
           type="submit"
           loading={saving}
           disabled={!name.trim() || saving}
         >
-          {factory ? "Save" : "Create"}
+          {factory ? <Check size={14} /> : <Plus size={14} />}
         </Button>
       </div>
     </form>

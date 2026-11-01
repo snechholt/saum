@@ -26,7 +26,7 @@ button:disabled {
 }
 .factory-layout {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-columns: 180px minmax(0, 1fr);
   min-height: 100dvh;
 }
 .sidebar {
@@ -35,7 +35,7 @@ button:disabled {
   padding: 0 14px;
 }
 .brand {
-  height: 82px;
+  height: 60px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -43,8 +43,8 @@ button:disabled {
   color: #344154;
 }
 .brand strong {
-  font-size: 25px;
-  letter-spacing: -1.3px;
+  font-size: 23px;
+  letter-spacing: -1px;
 }
 .nav-item {
   width: 100%;
@@ -66,18 +66,18 @@ button:disabled {
 }
 .workspace {
   min-width: 0;
-  padding: 38px 40px;
+  padding: 20px 24px;
 }
 .page-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  padding-bottom: 27px;
+  padding-bottom: 12px;
   border-bottom: 1px solid #edf0f4;
 }
 h1 {
-  font-size: 25px;
+  font-size: 21px;
   font-weight: 600;
   letter-spacing: -0.7px;
   margin: 0;
@@ -85,22 +85,22 @@ h1 {
 }
 .empty-state {
   display: block;
-  padding: 110px 0;
+  padding: 40px 0;
   margin: 0;
   text-align: center;
   color: #a0aaba;
   font-size: 12px;
 }
 .create-form {
-  margin-top: 22px;
-  padding: 20px;
+  margin-top: 12px;
+  padding: 12px;
   border: 1px solid #e0e7f1;
   border-radius: 8px;
   max-width: 440px;
 }
 .create-form label {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   color: #6e7e96;
   font-size: 11px;
 }
@@ -109,15 +109,15 @@ h1 {
   border-radius: 6px;
   background: #fff;
   width: 100%;
-  padding: 10px;
+  padding: 6px 8px;
   color: #526581;
   outline-offset: 3px;
 }
 .create-form > div {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 13px;
+  gap: 4px;
+  margin-top: 8px;
 }
 .table-link {
   border: 0;
@@ -133,7 +133,7 @@ h1 {
 .section-title {
   font-size: 13px;
   font-weight: 500;
-  margin: 24px 0 0;
+  margin: 16px 0 0;
 }
 .error-message {
   display: flex;
@@ -152,7 +152,7 @@ h1 {
     grid-template-columns: 170px minmax(0, 1fr);
   }
   .workspace {
-    padding: 30px 24px;
+    padding: 20px;
   }
 }
 @media (max-width: 480px) {
@@ -170,9 +170,9 @@ h1 {
     margin-bottom: 13px;
   }
   .workspace {
-    padding: 25px 20px;
+    padding: 16px;
   }
   h1 {
-    font-size: 23px;
+    font-size: 21px;
   }
 }

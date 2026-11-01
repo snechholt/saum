@@ -1,16 +1,16 @@
 .data-table {
-  margin-top: 24px;
+  margin-top: 12px;
 }
 .table-filter {
   width: min(280px, 100%);
   border: 1px solid #e1e6ee;
   border-radius: 6px;
-  padding: 8px 10px;
+  padding: 6px 8px;
   background: #fff;
   color: #526581;
   font: inherit;
   font-size: 12px;
-  margin-bottom: 18px;
+  margin-bottom: 8px;
 }
 .table-filter::placeholder {
   color: #a0aaba;
@@ -32,8 +32,8 @@
 .data-table th button {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 0;
+  gap: 6px;
+  padding: 7px 0;
   border: 0;
   background: none;
   color: inherit;
@@ -45,13 +45,13 @@
 }
 .data-table td {
   border-bottom: 1px solid #edf0f4;
-  padding: 14px 0;
+  padding: 4px 0;
   color: #526581;
   overflow-wrap: anywhere;
 }
 .data-table th,
 .data-table td {
-  padding-right: 24px;
+  padding-right: 16px;
 }
 .data-table td:last-child,
 .data-table th:last-child {
@@ -63,7 +63,7 @@
   width: 1%;
 }
 .data-table .table-empty {
-  padding: 70px 0;
+  padding: 32px 0;
   text-align: center;
   color: #a0aaba;
 }
