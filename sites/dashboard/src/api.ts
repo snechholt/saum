@@ -1,8 +1,39 @@
 export type Factory = { id: string; name: string };
-export type UserStory = { id: string; title: string; goal: string };
+export type PlanningStatus =
+  | "needs_goal"
+  | "queued"
+  | "preparing"
+  | "running"
+  | "completed"
+  | "failed"
+  | "interrupted"
+  | "cancelled";
+export type UserStory = {
+  id: string;
+  title: string;
+  goal: string;
+  planningStatus: PlanningStatus;
+  sessionId: string;
+};
+
+export function parsePlanningStatus(value: unknown): PlanningStatus {
+  switch (value) {
+    case "needs_goal":
+    case "queued":
+    case "preparing":
+    case "running":
+    case "completed":
+    case "failed":
+    case "interrupted":
+    case "cancelled":
+      return value;
+    default:
+      throw new Error("Invalid planning status.");
+  }
+}
 export type StoryDraft = Pick<UserStory, "title" | "goal">;
 
-function parseUserStory(value: unknown): UserStory {
+export function parseUserStory(value: unknown): UserStory {
   if (
     typeof value !== "object" ||
     value === null ||
@@ -17,11 +48,23 @@ function parseUserStory(value: unknown): UserStory {
   ) {
     throw new Error("The server returned an invalid user story.");
   }
-  return { id: value.id, title: value.title, goal: value.goal };
+  if (
+    !("planningStatus" in value) ||
+    !("sessionId" in value) ||
+    typeof value.sessionId !== "string"
+  )
+    throw new Error("Invalid story session.");
+  return {
+    id: value.id,
+    title: value.title,
+    goal: value.goal,
+    planningStatus: parsePlanningStatus(value.planningStatus),
+    sessionId: value.sessionId,
+  };
 }
 
 type NamedItem = { id: string; name: string };
-function parseNamedItem(value: unknown): NamedItem {
+export function parseNamedItem(value: unknown): NamedItem {
   if (
     typeof value !== "object" ||
     value === null ||
@@ -36,7 +79,7 @@ function parseNamedItem(value: unknown): NamedItem {
   }
   return { id: value.id, name: value.name };
 }
-async function request(path: string, init?: RequestInit): Promise<unknown> {
+export async function request(path: string, init?: RequestInit): Promise<unknown> {
   const response = await fetch(`/api/${path}`, init);
   if (response.status === 204) return null;
   const body: unknown = await response.json();

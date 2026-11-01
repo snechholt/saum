@@ -8,15 +8,15 @@
   "type": "module",
   "scripts": {
     "dev": "bun run --no-orphans --parallel dev:api dev:site",
-    "dev:api": "cd api && go run .",
+    "dev:api": "cd api && sh -c 'mkdir -p ../.saum && go build -o ../.saum/saum-dev . && exec ../.saum/saum-dev'",
     "dev:site": "bun run --cwd sites/dashboard dev",
     "build": "bun run --cwd sites/dashboard build",
     "lint": "oxlint --type-aware --deny-warnings .",
     "fmt": "oxfmt --write .",
     "fmt:check": "oxfmt --check .",
-    "typecheck": "tsc -p packages/ui && tsc -p sites/dashboard",
+    "typecheck": "tsc -p packages/ui && tsc -p sites/dashboard && tsc -p tests",
     "test": "bun run test:ui && bun run test:api",
-    "test:ui": "bun test packages/ui",
+    "test:ui": "bun test packages/ui tests",
     "test:api": "cd api && go test -race ./...",
     "check": "bun run fmt:check && bun run lint && bun run typecheck && bun run test"
   },

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router";
 import { Button } from "@cloudflare/kumo/components/button";
 import { Sidebar } from "@cloudflare/kumo/components/sidebar";
 import {
@@ -14,6 +15,8 @@ import { FactoryForm } from "./FactoryForm";
 import { FactoryStories } from "./FactoryStories";
 import { DeleteFactoryDialog } from "./DeleteFactoryDialog";
 
+const StoryPage = lazy(() => import("./StoryPage"));
+
 type FactoryList =
   | { status: "loading" }
   | { status: "ready"; factories: Factory[] }
@@ -22,7 +25,12 @@ type Form = { mode: "create" } | { mode: "edit"; factory: Factory } | null;
 
 export default function App() {
   const [list, setList] = useState<FactoryList>({ status: "loading" });
-  const [selected, setSelected] = useState<Factory | null>(null);
+  const { factoryId, storyId } = useParams();
+  const navigate = useNavigate();
+  const selected =
+    list.status === "ready"
+      ? list.factories.find((factory) => factory.id === factoryId)
+      : undefined;
   const [form, setForm] = useState<Form>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -53,7 +61,6 @@ export default function App() {
           : [...current.factories, factory],
       };
     });
-    setSelected((current) => (current?.id === factory.id ? factory : current));
     setForm(null);
   }
 
@@ -71,7 +78,7 @@ export default function App() {
             }
           : current,
       );
-      setSelected((current) => (current?.id === factory.id ? null : current));
+      if (factoryId === factory.id) void navigate("/");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not delete factory.");
     } finally {
@@ -86,15 +93,13 @@ export default function App() {
       header: "Name",
       value: (factory) => factory.name,
       render: (factory) => (
-        <button
+        <Link
           className="table-link"
-          onClick={() => {
-            setForm(null);
-            setSelected(factory);
-          }}
+          to={`/factories/${encodeURIComponent(factory.id)}`}
+          onClick={() => setForm(null)}
         >
           {factory.name}
-        </button>
+        </Link>
       ),
     },
   ];
@@ -119,10 +124,10 @@ export default function App() {
             <Sidebar.MenuButton
               className="nav-item"
               icon={SquaresFour}
-              active={!selected}
-              aria-current={selected ? undefined : "page"}
+              active={!selected && !storyId}
+              aria-current={!selected && !storyId ? "page" : undefined}
               onClick={() => {
-                setSelected(null);
+                void navigate("/");
                 setError("");
               }}
             >
@@ -134,12 +139,24 @@ export default function App() {
           </Sidebar.Menu>
         </Sidebar.Content>
       </Sidebar>
-      <main className="workspace">
+      <main className={storyId ? "workspace story-route" : "workspace"}>
         <div className="mobile-navigation">
           <Sidebar.Trigger />
           <span>Saum</span>
         </div>
-        {selected ? (
+        {storyId ? (
+          <Suspense fallback={<output className="empty-state">Loading…</output>}>
+            <StoryPage key={storyId} id={storyId} />
+          </Suspense>
+        ) : factoryId && list.status === "loading" ? (
+          <output className="empty-state">Loading…</output>
+        ) : factoryId && list.status === "failed" ? (
+          <p className="error-message" role="alert">
+            Could not load factory.
+          </p>
+        ) : factoryId && !selected ? (
+          <p role="alert">Factory not found.</p>
+        ) : selected ? (
           <FactoryStories key={selected.id} factory={selected} />
         ) : (
           <>
