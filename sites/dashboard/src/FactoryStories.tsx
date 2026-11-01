@@ -4,7 +4,7 @@ import { Button } from "@cloudflare/kumo/components/button";
 import { ArrowClockwise, Plus, Terminal } from "@phosphor-icons/react";
 import { DataTable, type Column } from "@saum/ui";
 import { listStories, type Factory, type UserStory } from "./api";
-import { isActive, retryPlanning } from "./sessions";
+import { isActive, retryPlanning, retryImplementation } from "./sessions";
 import { PlanningBadge } from "./PlanningBadge";
 import { UserStoryForm } from "./UserStoryForm";
 
@@ -27,9 +27,9 @@ const columns: Column<UserStory>[] = [
   },
   {
     id: "planning",
-    header: "Planning",
+    header: "Status",
     value: (story) => story.planningStatus,
-    render: (story) => <PlanningBadge status={story.planningStatus} />,
+    render: (story) => <PlanningBadge status={story.planningStatus} kind={story.sessionKind} />,
   },
 ];
 type StoryList =
@@ -78,14 +78,21 @@ export function FactoryStories({ factory }: { factory: Factory }) {
     setRetrying(story.id);
     setError("");
     try {
-      const session = await retryPlanning(story.id);
+      const session = await (
+        story.sessionKind === "implementation" ? retryImplementation : retryPlanning
+      )(story.id);
       setList((current) =>
         current.status === "ready"
           ? {
               status: "ready",
               stories: current.stories.map((item) =>
                 item.id === story.id
-                  ? { ...item, planningStatus: session.status, sessionId: session.id }
+                  ? {
+                      ...item,
+                      planningStatus: session.status,
+                      sessionId: session.id,
+                      sessionKind: session.kind,
+                    }
                   : item,
               ),
             }
@@ -95,7 +102,7 @@ export function FactoryStories({ factory }: { factory: Factory }) {
         `/stories/${encodeURIComponent(story.id)}/sessions/${encodeURIComponent(session.id)}`,
       );
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not start planning.");
+      setError(reason instanceof Error ? reason.message : "Could not start session.");
     } finally {
       setRetrying("");
     }

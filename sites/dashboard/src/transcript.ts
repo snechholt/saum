@@ -109,6 +109,10 @@ export function parseTranscript(events: readonly SessionEvent[]): {
           "saum.remove_item",
           "saum.resolve_feedback",
           "saum.complete_plan",
+          "saum.start_item",
+          "saum.complete_item",
+          "saum.block_item",
+          "saum.complete_implementation",
         ].includes(name)
       )
         continue;

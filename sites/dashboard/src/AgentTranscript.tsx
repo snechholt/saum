@@ -46,6 +46,13 @@ function ToolEntry({ entry }: { entry: Exclude<TranscriptEntry, { kind: "message
     "saum.update_item": { pending: "Update item", done: "Item updated" },
     "saum.remove_item": { pending: "Remove item", done: "Item removed" },
     "saum.resolve_feedback": { pending: "Address feedback", done: "Feedback addressed" },
+    "saum.start_item": { pending: "Start item", done: "Item started" },
+    "saum.complete_item": { pending: "Complete item", done: "Item completed" },
+    "saum.block_item": { pending: "Report blocker", done: "Item blocked" },
+    "saum.complete_implementation": {
+      pending: "Complete implementation",
+      done: "Implementation submitted",
+    },
     "saum.complete_plan": { pending: "Complete plan", done: "Plan submitted" },
     search: { pending: "Find Saum functions", done: "Find Saum functions" },
     execute: { pending: "Run Saum functions", done: "Run Saum functions" },
@@ -57,7 +64,11 @@ function ToolEntry({ entry }: { entry: Exclude<TranscriptEntry, { kind: "message
       ? entry.input["title"]
       : typeof entry.input["resolution"] === "string"
         ? entry.input["resolution"]
-        : "";
+        : typeof entry.input["summary"] === "string"
+          ? entry.input["summary"]
+          : typeof entry.input["key"] === "string"
+            ? entry.input["key"]
+            : "";
   const code =
     typeof entry.input["code"] === "string"
       ? entry.input["code"]
@@ -120,7 +131,10 @@ export function AgentTranscript({
           <strong>Codex</strong>
         </div>
         <div className="session-actions">
-          <PlanningBadge status={session?.status ?? story.planningStatus} />
+          <PlanningBadge
+            status={session?.status ?? story.planningStatus}
+            kind={session?.kind ?? story.sessionKind}
+          />
           {session && active && (
             <Button
               variant="ghost"
@@ -145,7 +159,7 @@ export function AgentTranscript({
             }}
             items={sessions.map((attempt, index) => ({
               value: attempt.id,
-              label: `Attempt ${sessions.length - index} · ${planningLabel(attempt.status)}`,
+              label: `${attempt.kind === "implementation" ? "Build" : "Plan"} ${sessions.length - index} · ${planningLabel(attempt.status, attempt.kind)}`,
             }))}
           />
         </div>

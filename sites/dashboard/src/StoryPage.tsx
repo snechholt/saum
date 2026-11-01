@@ -5,9 +5,16 @@ import { LayerCard } from "@cloudflare/kumo/components/layer-card";
 import { ArrowClockwise, CaretRight } from "@phosphor-icons/react";
 import { AgentTranscript } from "./AgentTranscript";
 import { getStory, type StoryDetail } from "./story-api";
-import { cancelSession, isActive, retryPlanning, type Session } from "./sessions";
+import {
+  cancelSession,
+  isActive,
+  retryPlanning,
+  retryImplementation,
+  type Session,
+} from "./sessions";
 import { usePlanningSession } from "./usePlanningSession";
 import { PlanReview } from "./PlanReview";
+import { ImplementationProgress } from "./ImplementationProgress";
 
 function StoryView({ detail, sessionId }: { detail: StoryDetail; sessionId: string }) {
   const navigate = useNavigate();
@@ -26,10 +33,12 @@ function StoryView({ detail, sessionId }: { detail: StoryDetail; sessionId: stri
     setBusy(true);
     setError("");
     try {
-      const attempt = await retryPlanning(detail.story.id);
+      const attempt = await (
+        current?.kind === "implementation" ? retryImplementation : retryPlanning
+      )(detail.story.id);
       selectSession(attempt.id);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not start planning.");
+      setError(reason instanceof Error ? reason.message : "Could not start session.");
     } finally {
       setBusy(false);
     }
@@ -61,14 +70,15 @@ function StoryView({ detail, sessionId }: { detail: StoryDetail; sessionId: stri
           <Button
             variant="secondary"
             shape="square"
-            aria-label="Plan story"
-            title="Plan again"
+            aria-label={current?.kind === "implementation" ? "Retry implementation" : "Plan story"}
+            title={current?.kind === "implementation" ? "Retry implementation" : "Plan again"}
             loading={busy}
             disabled={
               !detail.story.goal ||
               !current ||
-              current.reviewStatus !== "pending" ||
-              !!session.detail?.comments.some((comment) => !comment.batchId) ||
+              (current.kind === "planning" &&
+                (current.reviewStatus !== "pending" ||
+                  !!session.detail?.comments.some((comment) => !comment.batchId))) ||
               isActive(detail.story.planningStatus) ||
               busy
             }
@@ -88,8 +98,14 @@ function StoryView({ detail, sessionId }: { detail: StoryDetail; sessionId: stri
           <h2 className="section-title">Goal</h2>
           <p>{detail.story.goal || "—"}</p>
         </LayerCard>
+        {matches && current && session.detail?.implementation && (
+          <ImplementationProgress
+            session={current}
+            implementation={session.detail.implementation}
+          />
+        )}
         <PlanReview
-          session={current}
+          session={matches ? (session.detail?.planSession ?? null) : null}
           items={items}
           comments={matches ? (session.detail?.comments ?? []) : []}
           latest={detail.story.sessionId === sessionId}

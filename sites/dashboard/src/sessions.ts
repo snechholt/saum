@@ -1,4 +1,10 @@
-import { parsePlanningStatus, request, type PlanningStatus } from "./api";
+import {
+  parsePlanningStatus,
+  parseSessionKind,
+  request,
+  type PlanningStatus,
+  type SessionKind,
+} from "./api";
 
 export type ReviewStatus = "pending" | "approved" | "changes_requested";
 export type PlanField = "title" | "description" | "acceptanceCriteria";
@@ -20,6 +26,7 @@ export type Session = {
   id: string;
   storyId: string;
   status: PlanningStatus;
+  kind: SessionKind;
   worktree: string;
   threadId: string;
   prompt: string;
@@ -40,7 +47,21 @@ export type ActionItem = {
   description: string;
   acceptanceCriteria: string[];
 };
+export type ImplementationItem = {
+  key: string;
+  title: string;
+  status: "pending" | "running" | "completed" | "blocked";
+  summary: string;
+};
+export type Implementation = {
+  planSessionId: string;
+  submitted: boolean;
+  summary: string;
+  items: ImplementationItem[];
+};
 export type SessionDetail = {
+  planSession: Session;
+  implementation: Implementation | null;
   session: Session;
   items: ActionItem[];
   comments: PlanComment[];
@@ -100,6 +121,7 @@ export function parseSession(value: unknown): Session {
     id: text(row, "id"),
     storyId: text(row, "storyId"),
     status: parsePlanningStatus(row["status"]),
+    kind: parseSessionKind(row["kind"]),
     worktree: text(row, "worktree"),
     threadId: text(row, "threadId"),
     prompt: text(row, "prompt"),
@@ -129,6 +151,35 @@ function parseItem(value: unknown): ActionItem {
     }),
   };
 }
+export function parseImplementation(value: unknown): Implementation | null {
+  if (value === null) return null;
+  const row = record(value),
+    items = row["items"];
+  if (typeof row["submitted"] !== "boolean" || !Array.isArray(items))
+    throw new Error("Invalid implementation.");
+  return {
+    planSessionId: text(row, "planSessionId"),
+    submitted: row["submitted"],
+    summary: text(row, "summary"),
+    items: items.map((value: unknown) => {
+      const item = record(value),
+        status = item["status"];
+      if (
+        status !== "pending" &&
+        status !== "running" &&
+        status !== "completed" &&
+        status !== "blocked"
+      )
+        throw new Error("Invalid item progress.");
+      return {
+        key: text(item, "key"),
+        title: text(item, "title"),
+        summary: text(item, "summary"),
+        status,
+      };
+    }),
+  };
+}
 export async function getSession(id: string): Promise<SessionDetail> {
   const row = record(await request(`sessions/${encodeURIComponent(id)}`)),
     items = row["items"];
@@ -137,8 +188,22 @@ export async function getSession(id: string): Promise<SessionDetail> {
     received = row["receivedFeedback"];
   if (!Array.isArray(comments) || !Array.isArray(received))
     throw new Error("Invalid plan feedback.");
+  const session = parseSession(row["session"]),
+    planSession = parseSession(row["planSession"]),
+    implementation = parseImplementation(row["implementation"]);
+  if (
+    planSession.kind !== "planning" ||
+    (session.kind === "implementation"
+      ? !implementation ||
+        planSession.id !== implementation.planSessionId ||
+        planSession.reviewStatus !== "approved"
+      : implementation !== null || planSession.id !== session.id)
+  )
+    throw new Error("Invalid plan context.");
   return {
-    session: parseSession(row["session"]),
+    session,
+    planSession,
+    implementation,
     items: items.map((item: unknown) => parseItem(item)),
     comments: comments.map((comment: unknown) => parsePlanComment(comment)),
     receivedFeedback: received.map((comment: unknown) => parsePlanComment(comment)),
@@ -160,13 +225,23 @@ export async function retryPlanning(storyId: string): Promise<Session> {
     await request(`stories/${encodeURIComponent(storyId)}/planning`, { method: "POST" }),
   );
 }
+export async function retryImplementation(storyId: string): Promise<Session> {
+  return parseSession(
+    await request(`stories/${encodeURIComponent(storyId)}/implementation`, { method: "POST" }),
+  );
+}
 export async function cancelSession(id: string): Promise<void> {
   await request(`sessions/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 export function isActive(status: PlanningStatus): boolean {
   return status === "queued" || status === "preparing" || status === "running";
 }
-export function planningLabel(status: PlanningStatus): string {
+export function planningLabel(status: PlanningStatus, kind: SessionKind = "planning"): string {
+  if (kind === "implementation") {
+    if (status === "completed") return "Built";
+    if (status === "running") return "Building";
+    if (status === "queued") return "Build queued";
+  }
   return status === "completed"
     ? "Planned"
     : status === "needs_goal"

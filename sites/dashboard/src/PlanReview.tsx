@@ -171,8 +171,8 @@ export function PlanReview({
         const next = await sendPlanFeedback(session.id);
         onRevision(next);
       } else {
-        await approvePlan(session.id);
-        await refresh();
+        const implementation = await approvePlan(session.id);
+        onRevision(implementation);
       }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not review plan.");

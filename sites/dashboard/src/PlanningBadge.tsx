@@ -1,8 +1,14 @@
 import { Badge } from "@cloudflare/kumo/components/badge";
-import type { PlanningStatus } from "./api";
+import type { PlanningStatus, SessionKind } from "./api";
 import { planningLabel } from "./sessions";
 
-export function PlanningBadge({ status }: { status: PlanningStatus }) {
+export function PlanningBadge({
+  status,
+  kind = "planning",
+}: {
+  status: PlanningStatus;
+  kind?: SessionKind;
+}) {
   return (
     <Badge
       variant={
@@ -15,7 +21,7 @@ export function PlanningBadge({ status }: { status: PlanningStatus }) {
               : "neutral"
       }
     >
-      {planningLabel(status)}
+      {planningLabel(status, kind)}
     </Badge>
   );
 }
