@@ -76,7 +76,10 @@ func migratePlanReview(db *sql.DB) error {
 	if err != nil {
 		return err
 	}
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return migrateImplementations(db)
 }
 func reviewable(tx *sql.Tx, id string) (Session, error) {
 	session, err := scanSession(tx.QueryRow("SELECT "+sessionColumns+" FROM sessions WHERE id=?", id))
@@ -245,6 +248,9 @@ func (s *Store) approvePlan(id string) error {
 	if _, err := tx.Exec("UPDATE sessions SET review_status='approved',reviewed_at=? WHERE id=?", time.Now().UTC().Format(time.RFC3339Nano), id); err != nil {
 		return err
 	}
+	if _, err := queueImplementation(tx, id); err != nil {
+		return err
+	}
 	return tx.Commit()
 }
 func clonePlan(tx *sql.Tx, sourceID, targetID string) error {
@@ -253,7 +259,7 @@ func clonePlan(tx *sql.Tx, sourceID, targetID string) error {
 	return err
 }
 func queueRevision(tx *sql.Tx, storyID, parentID, batchID string) (Session, error) {
-	session := Session{ID: rand.Text(), StoryID: storyID, Status: SessionQueued, ReviewStatus: ReviewPending, ParentSessionID: parentID, FeedbackBatchID: batchID, CreatedAt: time.Now().UTC().Format(time.RFC3339Nano)}
+	session := Session{ID: rand.Text(), StoryID: storyID, Status: SessionQueued, Kind: PlanningSession, ReviewStatus: ReviewPending, ParentSessionID: parentID, FeedbackBatchID: batchID, CreatedAt: time.Now().UTC().Format(time.RFC3339Nano)}
 	_, err := tx.Exec("INSERT INTO sessions (id,story_id,status,parent_session_id,feedback_batch_id,created_at) VALUES (?,?,'queued',?,?,?)", session.ID, storyID, parentID, batchID, session.CreatedAt)
 	if err != nil {
 		return Session{}, err

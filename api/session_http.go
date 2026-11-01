@@ -17,12 +17,25 @@ func (s *Store) getSession(w http.ResponseWriter, r *http.Request) {
 		problem(w, 500, "Could not load session")
 		return
 	}
-	items, err := s.items(session.ID)
+	build, err := s.implementation(session.ID)
+	if err != nil {
+		problem(w, 500, "Could not load implementation")
+		return
+	}
+	planSession := session
+	if build != nil {
+		planSession, err = s.session(build.PlanSessionID)
+		if err != nil {
+			problem(w, 500, "Could not load approved plan")
+			return
+		}
+	}
+	items, err := s.items(planSession.ID)
 	if err != nil {
 		problem(w, 500, "Could not load items")
 		return
 	}
-	comments, err := s.planComments(session.ID)
+	comments, err := s.planComments(planSession.ID)
 	if err != nil {
 		problem(w, 500, "Could not load comments")
 		return
@@ -33,11 +46,13 @@ func (s *Store) getSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jsonResponse(w, 200, struct {
-		Session          Session       `json:"session"`
-		Items            []ActionItem  `json:"items"`
-		Comments         []PlanComment `json:"comments"`
-		ReceivedFeedback []PlanComment `json:"receivedFeedback"`
-	}{session, items, comments, feedback})
+		Session          Session         `json:"session"`
+		PlanSession      Session         `json:"planSession"`
+		Implementation   *Implementation `json:"implementation"`
+		Items            []ActionItem    `json:"items"`
+		Comments         []PlanComment   `json:"comments"`
+		ReceivedFeedback []PlanComment   `json:"receivedFeedback"`
+	}{session, planSession, build, items, comments, feedback})
 }
 func (s *Store) getSessionEvents(w http.ResponseWriter, r *http.Request) {
 	if _, err := s.session(r.PathValue("session")); errors.Is(err, sql.ErrNoRows) {

@@ -17,11 +17,12 @@ type Factory struct {
 
 // A UserStory describes a desired outcome within a Factory, not an implementation plan.
 type UserStory struct {
-	ID             string `json:"id"`
-	Title          string `json:"title"`
-	Goal           string `json:"goal"` // Empty only for entries imported before goals existed.
-	PlanningStatus string `json:"planningStatus"`
-	SessionID      string `json:"sessionId"`
+	ID             string      `json:"id"`
+	Title          string      `json:"title"`
+	Goal           string      `json:"goal"` // Empty only for entries imported before goals existed.
+	PlanningStatus string      `json:"planningStatus"`
+	SessionID      string      `json:"sessionId"`
+	SessionKind    SessionKind `json:"sessionKind"`
 }
 
 var ErrFactoryNotEmpty = errors.New("Factory still contains user stories")
@@ -86,7 +87,8 @@ func (s *Store) listStories(factoryID string) ([]UserStory, error) {
 	}
 	rows, err := s.db.Query(`SELECT id, title, goal,
  CASE WHEN length(trim(goal))=0 THEN 'needs_goal' ELSE COALESCE((SELECT status FROM sessions WHERE story_id=user_stories.id ORDER BY rowid DESC LIMIT 1),'queued') END,
- COALESCE((SELECT id FROM sessions WHERE story_id=user_stories.id ORDER BY rowid DESC LIMIT 1),'')
+ COALESCE((SELECT id FROM sessions WHERE story_id=user_stories.id ORDER BY rowid DESC LIMIT 1),''),
+ COALESCE((SELECT kind FROM sessions WHERE story_id=user_stories.id ORDER BY rowid DESC LIMIT 1),'planning')
  FROM user_stories WHERE factory_id = ? ORDER BY rowid`, factoryID)
 	if err != nil {
 		return nil, err
@@ -95,7 +97,7 @@ func (s *Store) listStories(factoryID string) ([]UserStory, error) {
 	stories := []UserStory{}
 	for rows.Next() {
 		var story UserStory
-		if err := rows.Scan(&story.ID, &story.Title, &story.Goal, &story.PlanningStatus, &story.SessionID); err != nil {
+		if err := rows.Scan(&story.ID, &story.Title, &story.Goal, &story.PlanningStatus, &story.SessionID, &story.SessionKind); err != nil {
 			return nil, err
 		}
 		stories = append(stories, story)

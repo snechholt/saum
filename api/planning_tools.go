@@ -58,11 +58,12 @@ func (s *Store) submitItem(sessionID string, raw ItemSubmission) (ActionItem, er
 	}
 	defer tx.Rollback()
 	var status SessionStatus
+	var kind SessionKind
 	var closed bool
-	if err = tx.QueryRow("SELECT status,plan_submitted FROM sessions WHERE id=?", sessionID).Scan(&status, &closed); err != nil {
+	if err = tx.QueryRow("SELECT status,kind,plan_submitted FROM sessions WHERE id=?", sessionID).Scan(&status, &kind, &closed); err != nil {
 		return ActionItem{}, err
 	}
-	if status != SessionRunning || closed {
+	if kind != PlanningSession || status != SessionRunning || closed {
 		return ActionItem{}, ErrPlanClosed
 	}
 	criteria, err := json.Marshal(input.AcceptanceCriteria)
@@ -108,10 +109,11 @@ func (s *Store) completePlan(sessionID string) error {
 	}
 	defer tx.Rollback()
 	var status SessionStatus
-	if err = tx.QueryRow("SELECT status FROM sessions WHERE id=?", sessionID).Scan(&status); err != nil {
+	var kind SessionKind
+	if err = tx.QueryRow("SELECT status,kind FROM sessions WHERE id=?", sessionID).Scan(&status, &kind); err != nil {
 		return err
 	}
-	if status != SessionRunning {
+	if kind != PlanningSession || status != SessionRunning {
 		return ErrPlanClosed
 	}
 	var count int
@@ -143,11 +145,20 @@ func (s *Store) mcpHandler() http.Handler {
 			return nil
 		}
 		closedWorld := false
-		server := mcp.NewServer(&mcp.Implementation{Name: "saum", Version: "0.1.0"}, &mcp.ServerOptions{Instructions: "Use search to discover session-scoped Saum functions. Use execute to run synchronous JavaScript with the saum namespace; return a JSON value. There is no filesystem, network, import, or process API inside execute. Functions commit independently. Decompose the assigned story; do not implement it."})
+		server := mcp.NewServer(&mcp.Implementation{Name: "saum", Version: "0.1.0"}, &mcp.ServerOptions{Instructions: "Use search to discover session-scoped Saum functions. Use execute to run synchronous JavaScript with the saum namespace; return a JSON value. There is no filesystem, network, import, or process API inside execute. Functions commit independently. Follow the session prompt: planning sessions only revise plans; implementation sessions build the approved plan without changing it."})
 		mcp.AddTool(server, &mcp.Tool{Name: "search", Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: &closedWorld}, Description: "Discover Saum functions, signatures, and examples by keywords. An empty query lists all functions."}, func(ctx context.Context, request *mcp.CallToolRequest, input struct {
 			Query string `json:"query"`
 		}) (*mcp.CallToolResult, map[string]any, error) {
-			functions := searchFunctions(input.Query)
+			functions := []FunctionInfo{}
+			for _, function := range searchFunctions(input.Query) {
+				kind := function.Kind
+				if kind == "" {
+					kind = PlanningSession
+				}
+				if kind == session.Kind {
+					functions = append(functions, function)
+				}
+			}
 			data, _ := json.Marshal(map[string]any{"tool": "search", "query": input.Query, "functions": functions})
 			if err := s.appendEvent(session.ID, "tool", data); err != nil {
 				return nil, nil, err

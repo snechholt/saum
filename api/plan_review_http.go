@@ -52,9 +52,9 @@ func (s *Store) postPlanApproval(w http.ResponseWriter, r *http.Request) {
 		reviewProblem(w, err)
 		return
 	}
-	session, err := s.session(r.PathValue("session"))
+	session, err := s.latestImplementation(r.PathValue("session"))
 	if err != nil {
-		problem(w, 500, "Could not load approved plan")
+		problem(w, 500, "Could not load implementation session")
 		return
 	}
 	jsonResponse(w, 200, session)

@@ -19,8 +19,11 @@ func migrate(db *sql.DB, legacyFile string) error {
 	if err := db.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
 		return err
 	}
-	if version == 5 {
+	if version == 6 {
 		return nil
+	}
+	if version == 5 {
+		return migrateImplementations(db)
 	}
 	if version == 4 {
 		return migratePlanReview(db)
@@ -28,7 +31,7 @@ func migrate(db *sql.DB, legacyFile string) error {
 	if version == 3 {
 		return migrateSessions(db)
 	}
-	if version < 0 || version > 5 {
+	if version < 0 || version > 6 {
 		return fmt.Errorf("unsupported database version %d", version)
 	}
 	tx, err := db.Begin()

@@ -41,6 +41,9 @@ func (p *Planner) Run(ctx context.Context) {
 		if ctx.Err() != nil {
 			return
 		}
+		if err := p.Store.queueApprovedPlans(); err != nil {
+			log.Printf("implementation queue: %v", err)
+		}
 		if err := p.Store.enqueueStories(); err != nil {
 			log.Printf("planner queue: %v", err)
 		} else {
@@ -97,7 +100,7 @@ func (p *Planner) recoverSessions() error {
 		if run.pid > 0 && run.identity != "" && processIdentity(run.pid) == run.identity {
 			_ = syscall.Kill(-run.pid, syscall.SIGKILL)
 		}
-		if err := p.Store.finishSession(run.id, SessionInterrupted, "Server stopped before the planning session finished; retry explicitly to start a new attempt"); err != nil {
+		if err := p.Store.finishSession(run.id, SessionInterrupted, "Server stopped before the agent session finished; retry explicitly to start a new attempt"); err != nil {
 			return err
 		}
 	}
@@ -175,6 +178,9 @@ func (p *Planner) execute(parent context.Context, session Session) {
 	timeout := p.Timeout
 	if timeout == 0 {
 		timeout = 15 * time.Minute
+		if session.Kind == ImplementationSession {
+			timeout = time.Hour
+		}
 	}
 	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
@@ -212,6 +218,13 @@ func (p *Planner) execute(parent context.Context, session Session) {
 			return
 		}
 	}
+	if session.Kind == ImplementationSession {
+		prompt, err = p.Store.implementationPrompt(session, title, goal)
+		if err != nil {
+			finish(SessionFailed, err)
+			return
+		}
+	}
 	token := rand.Text()
 	if err = p.Store.startSession(session.ID, path, prompt, token); err != nil {
 		finish(SessionFailed, err)
@@ -223,6 +236,9 @@ func (p *Planner) execute(parent context.Context, session Session) {
 	}
 	config := fmt.Sprintf("mcp_servers.saum={url=%s,bearer_token_env_var=\"SAUM_SESSION_TOKEN\",required=true,default_tools_approval_mode=\"approve\"}", strconv.Quote(p.MCPURL))
 	args := []string{"exec", "--json", "--color", "never", "--ignore-user-config", "--ephemeral", "--sandbox", "workspace-write", "-c", "approval_policy=\"never\"", "-c", config, "-C", path, "-"}
+	if session.Kind == ImplementationSession {
+		args = append(args[:len(args)-1], "-c", "sandbox_workspace_write.network_access=true", "-")
+	}
 	cmd := exec.CommandContext(ctx, p.Codex, args...)
 	cmd.Dir = path
 	cmd.Env = []string{}
@@ -311,6 +327,24 @@ func (p *Planner) execute(parent context.Context, session Session) {
 		finish(SessionFailed, readErr)
 	case !turnFinished:
 		finish(SessionFailed, fmt.Errorf("Codex exited without a completed turn"))
+	case current.Kind == ImplementationSession:
+		build, err := p.Store.implementation(session.ID)
+		if err != nil {
+			finish(SessionFailed, err)
+		} else if build == nil || !build.Submitted {
+			message := "Codex did not complete the implementation through saum.complete_implementation()"
+			if build != nil {
+				for _, item := range build.Items {
+					if item.Status == "blocked" {
+						message = "Blocked: " + item.Title + ": " + item.Summary
+						break
+					}
+				}
+			}
+			finish(SessionFailed, errors.New(message))
+		} else {
+			finish(SessionCompleted, nil)
+		}
 	case !current.PlanSubmitted:
 		finish(SessionFailed, fmt.Errorf("Codex did not submit a complete plan through saum.complete_plan()"))
 	default:

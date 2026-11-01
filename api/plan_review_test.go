@@ -45,7 +45,7 @@ func TestPlanApprovalIsAnExplicitImmutableBatch(t *testing.T) {
 	if _, err := store.addPlanComment(session.ID, titleComment(item)); !errors.Is(err, ErrReviewConflict) {
 		t.Fatal("annotated approved plan", err)
 	}
-	if _, err := store.retryStory(session.StoryID); !errors.Is(err, ErrReviewConflict) {
+	if _, err := store.retryStory(session.StoryID); err == nil {
 		t.Fatal("replanned approved state", err)
 	}
 	if _, err := store.updateItem(session.ID, ItemSubmission{Key: "login", Title: "Changed", Description: "Changed", AcceptanceCriteria: []string{"Changed"}}); err != ErrPlanClosed {

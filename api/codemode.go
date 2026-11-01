@@ -12,13 +12,19 @@ import (
 )
 
 type FunctionInfo struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Signature   string `json:"signature"`
-	Example     string `json:"example"`
+	Name        string      `json:"name"`
+	Description string      `json:"description"`
+	Signature   string      `json:"signature"`
+	Example     string      `json:"example"`
+	Kind        SessionKind `json:"-"`
 }
 
 var saumFunctions = []FunctionInfo{
+	{Kind: ImplementationSession, Name: "saum.start_item", Description: "Mark an approved item as in progress before implementing it. Only one item may run at a time.", Signature: "saum.start_item({key: string}): {key,title,status,summary}", Example: `return saum.start_item({key:"login-form"});`},
+	{Kind: ImplementationSession, Name: "saum.complete_item", Description: "Report an item complete after implementing and testing its acceptance criteria. Requires start_item first.", Signature: "saum.complete_item({key: string,summary: string}): {completed: boolean}", Example: `return saum.complete_item({key:"login-form",summary:"Implemented login; the authentication tests pass."});`},
+	{Kind: ImplementationSession, Name: "saum.block_item", Description: "Report an item blocked with the specific missing decision or dependency. Never mark blocked work complete.", Signature: "saum.block_item({key: string,summary: string}): {blocked: boolean}", Example: `return saum.block_item({key:"password-reset",summary:"Which verified recovery channel should deliver reset credentials?"});`},
+	{Kind: ImplementationSession, Name: "saum.complete_implementation", Description: "Submit the implementation only after every approved item is complete. Does not deploy the application.", Signature: "saum.complete_implementation({summary: string}): {submitted: boolean}", Example: `return saum.complete_implementation({summary:"Implemented and tested all three items. Run bun dev in this worktree."});`},
+
 	{Name: "saum.submit_item", Description: "Save one actionable item in this session's user-story plan. A key is idempotent only when the content is identical. Calls commit independently.", Signature: "saum.submit_item({key: string, title: string, description: string, acceptanceCriteria: string[]}): {id, sessionId, key, title, description, acceptanceCriteria}", Example: `return saum.submit_item({key:"login-form",title:"Deliver sign-in",description:"Let existing users sign in with their credentials.",acceptanceCriteria:["Valid credentials open the private area","Invalid credentials are rejected"]});`},
 	{Name: "saum.update_item", Description: "Replace an existing item in the current working plan. Provide every field, preserving its key. Never changes an earlier submitted plan.", Signature: "saum.update_item({key: string, title: string, description: string, acceptanceCriteria: string[]}): Item", Example: `return saum.update_item({key:"login-form",title:"Deliver sign-in",description:"Use the revised behavior.",acceptanceCriteria:["Revised behavior works"]});`},
 	{Name: "saum.remove_item", Description: "Remove an item by key from the current working plan only.", Signature: "saum.remove_item({key: string}): {removed: boolean}", Example: `return saum.remove_item({key:"unnecessary-item"});`},
@@ -137,6 +143,41 @@ func (s *Store) runCode(parent context.Context, sessionID, code string) (any, er
 		name string
 		call func([]byte) (any, error)
 	}{
+		{"start_item", func(data []byte) (any, error) {
+			var input struct {
+				Key string `json:"key"`
+			}
+			if err := decode(data, &input); err != nil {
+				return nil, err
+			}
+			return s.startImplementationItem(sessionID, input.Key)
+		}},
+		{"complete_item", func(data []byte) (any, error) {
+			var input ItemProgress
+			if err := decode(data, &input); err != nil {
+				return nil, err
+			}
+			err := s.reportImplementationItem(sessionID, input, false)
+			return map[string]bool{"completed": err == nil}, err
+		}},
+		{"block_item", func(data []byte) (any, error) {
+			var input ItemProgress
+			if err := decode(data, &input); err != nil {
+				return nil, err
+			}
+			err := s.reportImplementationItem(sessionID, input, true)
+			return map[string]bool{"blocked": err == nil}, err
+		}},
+		{"complete_implementation", func(data []byte) (any, error) {
+			var input struct {
+				Summary string `json:"summary"`
+			}
+			if err := decode(data, &input); err != nil {
+				return nil, err
+			}
+			err := s.completeImplementation(sessionID, input.Summary)
+			return map[string]bool{"submitted": err == nil}, err
+		}},
 		{"submit_item", func(data []byte) (any, error) {
 			var input ItemSubmission
 			if err := decode(data, &input); err != nil {

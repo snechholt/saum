@@ -32,7 +32,7 @@ func parseStorySpec(rawTitle, rawGoal string) (StorySpec, error) {
 	return StorySpec{title: title, goal: goal}, nil
 }
 func (s *Store) createStory(factoryID string, spec StorySpec) (UserStory, error) {
-	story := UserStory{PlanningStatus: "queued"}
+	story := UserStory{PlanningStatus: "queued", SessionKind: PlanningSession}
 	err := s.db.QueryRow(`INSERT INTO user_stories (id, factory_id, title, goal)
  SELECT ?, id, ?, ? FROM factories WHERE id = ?
  RETURNING id, title, goal`, rand.Text(), spec.title, spec.goal, factoryID).Scan(&story.ID, &story.Title, &story.Goal)

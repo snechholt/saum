@@ -10,11 +10,12 @@ import (
 
 func mutablePlan(tx *sql.Tx, id string) error {
 	var status SessionStatus
+	var kind SessionKind
 	var sealed bool
-	if err := tx.QueryRow("SELECT status,plan_submitted FROM sessions WHERE id=?", id).Scan(&status, &sealed); err != nil {
+	if err := tx.QueryRow("SELECT status,kind,plan_submitted FROM sessions WHERE id=?", id).Scan(&status, &kind, &sealed); err != nil {
 		return err
 	}
-	if status != SessionRunning || sealed {
+	if kind != PlanningSession || status != SessionRunning || sealed {
 		return ErrPlanClosed
 	}
 	return nil

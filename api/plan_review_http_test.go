@@ -54,7 +54,7 @@ func TestPlanReviewHTTP(t *testing.T) {
 		t.Fatal(response.Code, response.Body.String())
 	}
 	var approved Session
-	if err := json.Unmarshal(response.Body.Bytes(), &approved); err != nil || approved.ReviewStatus != ReviewApproved {
+	if err := json.Unmarshal(response.Body.Bytes(), &approved); err != nil || approved.Kind != ImplementationSession || approved.ParentSessionID != source.ID {
 		t.Fatal("approval not returned", err)
 	}
 }

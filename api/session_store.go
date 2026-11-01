@@ -27,6 +27,7 @@ type Session struct {
 	ID              string        `json:"id"`
 	StoryID         string        `json:"storyId"`
 	Status          SessionStatus `json:"status"`
+	Kind            SessionKind   `json:"kind"`
 	Worktree        string        `json:"worktree"`
 	ThreadID        string        `json:"threadId"`
 	Prompt          string        `json:"prompt"`
@@ -53,7 +54,7 @@ type ActionItem struct {
 	AcceptanceCriteria []string `json:"acceptanceCriteria"`
 }
 
-const sessionColumns = "id, story_id, status, worktree, thread_id, prompt, error, plan_submitted, created_at, finished_at, COALESCE(parent_session_id,''), COALESCE(feedback_batch_id,''), review_status, reviewed_at"
+const sessionColumns = "id, story_id, status, worktree, thread_id, prompt, error, plan_submitted, created_at, finished_at, COALESCE(parent_session_id,''), COALESCE(feedback_batch_id,''), review_status, reviewed_at, kind"
 
 func migrateSessions(db *sql.DB) error {
 	tx, err := db.Begin()
@@ -97,7 +98,7 @@ func migrateSessions(db *sql.DB) error {
 }
 func scanSession(row interface{ Scan(...any) error }) (Session, error) {
 	var session Session
-	err := row.Scan(&session.ID, &session.StoryID, &session.Status, &session.Worktree, &session.ThreadID, &session.Prompt, &session.Error, &session.PlanSubmitted, &session.CreatedAt, &session.FinishedAt, &session.ParentSessionID, &session.FeedbackBatchID, &session.ReviewStatus, &session.ReviewedAt)
+	err := row.Scan(&session.ID, &session.StoryID, &session.Status, &session.Worktree, &session.ThreadID, &session.Prompt, &session.Error, &session.PlanSubmitted, &session.CreatedAt, &session.FinishedAt, &session.ParentSessionID, &session.FeedbackBatchID, &session.ReviewStatus, &session.ReviewedAt, &session.Kind)
 	return session, err
 }
 func (s *Store) session(id string) (Session, error) {
@@ -136,6 +137,13 @@ func (s *Store) retryStory(storyID string) (Session, error) {
 	if active > 0 {
 		return Session{}, fmt.Errorf("User story already has an active session")
 	}
+	var approvedCount int
+	if err := tx.QueryRow("SELECT count(*) FROM sessions WHERE story_id=? AND review_status='approved' AND kind='planning'", storyID).Scan(&approvedCount); err != nil {
+		return Session{}, err
+	}
+	if approvedCount > 0 {
+		return Session{}, fmt.Errorf("%w: approved stories must retry implementation, not planning", ErrReviewConflict)
+	}
 	var latestID, parentID, batchID string
 	var review ReviewStatus
 	err = tx.QueryRow("SELECT id,COALESCE(parent_session_id,''),COALESCE(feedback_batch_id,''),review_status FROM sessions WHERE story_id=? ORDER BY rowid DESC LIMIT 1", storyID).Scan(&latestID, &parentID, &batchID, &review)
@@ -164,7 +172,7 @@ func (s *Store) retryStory(storyID string) (Session, error) {
 		}
 		return session, nil
 	}
-	session := Session{ID: rand.Text(), StoryID: storyID, Status: SessionQueued, ReviewStatus: ReviewPending, CreatedAt: time.Now().UTC().Format(time.RFC3339Nano)}
+	session := Session{ID: rand.Text(), StoryID: storyID, Status: SessionQueued, Kind: PlanningSession, ReviewStatus: ReviewPending, CreatedAt: time.Now().UTC().Format(time.RFC3339Nano)}
 	if _, err = tx.Exec("INSERT INTO sessions (id,story_id,status,created_at) VALUES (?,?,?,?)", session.ID, storyID, session.Status, session.CreatedAt); err != nil {
 		return Session{}, err
 	}
