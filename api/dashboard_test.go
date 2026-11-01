@@ -14,7 +14,7 @@ func TestDashboardDeepLinks(t *testing.T) {
 		t.Fatal(err)
 	}
 	handler := testStore(t).handler(dashboardHandler(directory))
-	for _, path := range []string{"/", "/factories/saum", "/factories/saum/sessions/session-1"} {
+	for _, path := range []string{"/", "/factories/saum", "/factories/saum/sessions/session-1", "/stories/story-1", "/stories/story-1/sessions/session-1"} {
 		response := httptest.NewRecorder()
 		handler.ServeHTTP(response, httptest.NewRequest("GET", "http://127.0.0.1:8080"+path, nil))
 		if response.Code != http.StatusOK || response.Body.String() != "Saum dashboard" {

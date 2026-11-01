@@ -55,6 +55,7 @@ func (s *Store) handler(web http.Handler) http.Handler {
 	mux.HandleFunc("GET /api/sessions/{session}/events", s.getSessionEvents)
 	mux.HandleFunc("DELETE /api/sessions/{session}", s.cancelSession)
 	mux.HandleFunc("POST /api/stories/{story}/planning", s.retryPlanning)
+	mux.HandleFunc("GET /api/stories/{story}", s.getStory)
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) { problem(w, 404, "Not found") })
 	mux.Handle("/", web)
 	return localOnly(mux)
