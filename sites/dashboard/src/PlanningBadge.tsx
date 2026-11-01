@@ -10,8 +10,20 @@ export function PlanningBadge({
   kind?: SessionKind;
   goalStatus?: GoalStatus | undefined;
 }) {
+  const integrationLabels = {
+    integrating: "Integrating",
+    integration_failed: "Integration failed",
+    needs_integration: "Needs integration",
+  };
+  const integrationLabel =
+    goalStatus === "integrating" ||
+    goalStatus === "integration_failed" ||
+    goalStatus === "needs_integration"
+      ? integrationLabels[goalStatus]
+      : undefined;
   const label =
-    goalStatus === "completed"
+    integrationLabel ??
+    (goalStatus === "completed"
       ? "Completed"
       : goalStatus === "awaiting_review"
         ? "Needs review"
@@ -19,11 +31,12 @@ export function PlanningBadge({
           ? "Blocked"
           : goalStatus === "failed"
             ? "Failed"
-            : planningLabel(status, kind);
+            : planningLabel(status, kind));
   const success = goalStatus === "completed" || (kind === "planning" && status === "completed");
   const error =
     goalStatus === "blocked" ||
     goalStatus === "failed" ||
+    goalStatus === "integration_failed" ||
     status === "failed" ||
     status === "interrupted";
   const info =

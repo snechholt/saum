@@ -168,12 +168,36 @@ func main() {
 	data := flag.String("data", "../.saum/factory.sqlite", "SQLite database file")
 	codex := flag.String("codex", "codex", "Codex executable")
 	workerEnabled := flag.Bool("worker", true, "Automatically decompose user stories")
+	recoverStory := flag.String("repair-approved-story", "", "Offline operator repair: recover an already approved legacy story into factory main (back up data and stop the server first)")
+	archiveStory := flag.String("archive-rejected-bootstrap", "", "Offline operator repair: archive a rejected empty-branch bootstrap and sync accepted main")
 	flag.Parse()
+	if *recoverStory != "" || *archiveStory != "" {
+		guard, err := net.Listen("tcp", "127.0.0.1:8080")
+		if err != nil {
+			log.Fatal("Stop the Saum API before offline workspace repair: ", err)
+		}
+		defer guard.Close()
+	}
 	store, err := openStore(*data)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer store.db.Close()
+	if *recoverStory != "" {
+		if err := store.recoverApprovedStory(context.Background(), *recoverStory); err != nil {
+			log.Fatal(err)
+		}
+		log.Print("Approved legacy workspace recovered")
+		return
+	}
+	if *archiveStory != "" {
+		backup, err := store.archiveRejectedBootstrap(context.Background(), *archiveStory)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("Rejected bootstrap preserved at %s; accepted main synchronized", backup)
+		return
+	}
 	planner := &Planner{Store: store, Codex: *codex, MCPURL: "http://127.0.0.1:8080/mcp"}
 	store.planner = planner
 	server := &http.Server{

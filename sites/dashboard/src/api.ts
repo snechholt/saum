@@ -5,6 +5,9 @@ export type GoalStatus =
   | "blocked"
   | "awaiting_review"
   | "completed"
+  | "integrating"
+  | "integration_failed"
+  | "needs_integration"
   | "failed";
 export function parseGoalStatus(value: unknown): GoalStatus {
   switch (value) {
@@ -12,6 +15,9 @@ export function parseGoalStatus(value: unknown): GoalStatus {
     case "working":
     case "blocked":
     case "awaiting_review":
+    case "integrating":
+    case "integration_failed":
+    case "needs_integration":
     case "completed":
     case "failed":
       return value;

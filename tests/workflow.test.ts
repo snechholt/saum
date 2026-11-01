@@ -1,4 +1,9 @@
 import { expect, test } from "bun:test";
+import { parseGoalStatus } from "../sites/dashboard/src/api";
+test("integration states are distinct from completed goals", () => {
+  for (const status of ["integrating", "integration_failed", "needs_integration"] as const)
+    expect(parseGoalStatus(status)).toBe(status);
+});
 import { parseWorkflow, parseSession } from "../sites/dashboard/src/sessions";
 import { parseSettings } from "../sites/dashboard/src/settings-api";
 import { sessionPath, storyPath } from "../sites/dashboard/src/paths";
