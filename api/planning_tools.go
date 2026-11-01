@@ -92,7 +92,7 @@ func (s *Store) submitItem(sessionID string, raw ItemSubmission) (ActionItem, er
 	} else {
 		return ActionItem{}, err
 	}
-	event, _ := json.Marshal(map[string]any{"tool": "saum_item_submit", "input": input, "result": item})
+	event, _ := json.Marshal(map[string]any{"tool": "saum.submit_item", "input": input, "result": item})
 	if _, err = tx.Exec("INSERT INTO session_events (session_id,stream,data) VALUES (?,'tool',?)", sessionID, event); err != nil {
 		return ActionItem{}, err
 	}
@@ -124,7 +124,7 @@ func (s *Store) completePlan(sessionID string) error {
 	if _, err = tx.Exec("UPDATE sessions SET plan_submitted=1 WHERE id=?", sessionID); err != nil {
 		return err
 	}
-	if _, err = tx.Exec("INSERT INTO session_events (session_id,stream,data) VALUES (?,'tool',?)", sessionID, []byte(`{"tool":"saum_plan_complete","result":"plan submitted"}`)); err != nil {
+	if _, err = tx.Exec("INSERT INTO session_events (session_id,stream,data) VALUES (?,'tool',?)", sessionID, []byte(`{"tool":"saum.complete_plan","result":"plan submitted"}`)); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -135,22 +135,22 @@ func (s *Store) mcpHandler() http.Handler {
 		if err != nil {
 			return nil
 		}
-		server := mcp.NewServer(&mcp.Implementation{Name: "saum", Version: "0.1.0"}, &mcp.ServerOptions{Instructions: "Decompose the assigned story only. Submit actionable items with saum_item_submit, then call saum_plan_complete. Never implement the items or modify accepted state. Tools are scoped to this session's story."})
-		mcp.AddTool(server, &mcp.Tool{Name: "saum_item_submit", Description: "Persist one actionable item in this session's user-story plan. Reuse the same key and identical content for retries."}, func(ctx context.Context, request *mcp.CallToolRequest, input ItemSubmission) (*mcp.CallToolResult, ActionItem, error) {
-			item, err := s.submitItem(session.ID, input)
-			if err != nil {
-				data, _ := json.Marshal(map[string]any{"tool": "saum_item_submit", "input": input, "error": err.Error()})
-				_ = s.appendEvent(session.ID, "tool", data)
+		server := mcp.NewServer(&mcp.Implementation{Name: "saum", Version: "0.1.0"}, &mcp.ServerOptions{Instructions: "Use search to discover session-scoped Saum functions. Use execute to run synchronous JavaScript with the saum namespace; return a JSON value. There is no filesystem, network, import, or process API inside execute. Functions commit independently. Decompose the assigned story; do not implement it."})
+		mcp.AddTool(server, &mcp.Tool{Name: "search", Description: "Discover Saum functions, signatures, and examples by keywords. An empty query lists all functions."}, func(ctx context.Context, request *mcp.CallToolRequest, input struct {
+			Query string `json:"query"`
+		}) (*mcp.CallToolResult, map[string]any, error) {
+			functions := searchFunctions(input.Query)
+			data, _ := json.Marshal(map[string]any{"tool": "search", "query": input.Query, "functions": functions})
+			if err := s.appendEvent(session.ID, "tool", data); err != nil {
+				return nil, nil, err
 			}
-			return nil, item, err
+			return nil, map[string]any{"functions": functions}, nil
 		})
-		mcp.AddTool(server, &mcp.Tool{Name: "saum_plan_complete", Description: "Close item submission after every actionable item has been successfully saved. Does not implement or accept the work."}, func(ctx context.Context, request *mcp.CallToolRequest, input struct{}) (*mcp.CallToolResult, map[string]bool, error) {
-			err := s.completePlan(session.ID)
-			if err != nil {
-				data, _ := json.Marshal(map[string]string{"tool": "saum_plan_complete", "error": err.Error()})
-				_ = s.appendEvent(session.ID, "tool", data)
-			}
-			return nil, map[string]bool{"submitted": err == nil}, err
+		mcp.AddTool(server, &mcp.Tool{Name: "execute", Description: "Run synchronous JavaScript using the functions discovered with search. Example: return saum.submit_item({...});. No await/import/require. Return a JSON value. Each call commits independently; reuse keys for retries."}, func(ctx context.Context, request *mcp.CallToolRequest, input struct {
+			Code string `json:"code"`
+		}) (*mcp.CallToolResult, map[string]any, error) {
+			result, err := s.executeCode(ctx, session.ID, input.Code)
+			return nil, map[string]any{"result": result}, err
 		})
 		return server
 	}, &mcp.StreamableHTTPOptions{Stateless: true, JSONResponse: true, MaxRequestBodyBytes: 128 << 10})

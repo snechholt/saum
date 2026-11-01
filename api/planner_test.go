@@ -88,15 +88,26 @@ func TestCodexHelperProcess(t *testing.T) {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(2)
 		}
+		tools, err := session.ListTools(ctx, nil)
+		if err != nil || len(tools.Tools) != 2 {
+			fmt.Fprintln(os.Stderr, "expected only search and execute tools", err)
+			os.Exit(6)
+		}
+		search, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "search", Arguments: map[string]string{"query": "submit item"}})
+		if err != nil || search.IsError {
+			fmt.Fprintln(os.Stderr, "search failed", err)
+			os.Exit(7)
+		}
 		input := ItemSubmission{Key: "authentication", Title: "Implement sign-in", Description: "Deliver sign-in for existing users without exposing private information.", AcceptanceCriteria: []string{"An authenticated user can access their own private information", "An unauthenticated request is rejected"}}
+		inputJSON, _ := json.Marshal(input)
 		for range 2 {
-			result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "saum_item_submit", Arguments: input})
+			result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "execute", Arguments: map[string]string{"code": "return saum.submit_item(" + string(inputJSON) + ");"}})
 			if err != nil || result.IsError {
 				fmt.Fprintf(os.Stderr, "submit failed: %+v %v\n", result, err)
 				os.Exit(3)
 			}
 		}
-		result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "saum_plan_complete", Arguments: struct{}{}})
+		result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "execute", Arguments: map[string]string{"code": "return saum.complete_plan();"}})
 		if err != nil || result.IsError {
 			fmt.Fprintf(os.Stderr, "complete failed: %+v %v\n", result, err)
 			os.Exit(4)
@@ -148,7 +159,7 @@ func TestPlannerPersistsRealMCPCallsAndWorktreeArtifacts(t *testing.T) {
 			tools++
 		}
 	}
-	if !strings.Contains(stdout, "unrecognized events must survive 🎯") || !strings.Contains(stdout, "input_tokens") || tools != 3 {
+	if !strings.Contains(stdout, "unrecognized events must survive 🎯") || !strings.Contains(stdout, "input_tokens") || tools < 9 {
 		t.Fatalf("session output not retained: %q tools=%d", stdout, tools)
 	}
 	if err := store.enqueueStories(); err != nil {

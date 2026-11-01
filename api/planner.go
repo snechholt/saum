@@ -163,8 +163,8 @@ func (p *Planner) worktree(ctx context.Context, factoryID, sessionID string) (st
 }
 func planningPrompt(title, goal string) string {
 	return fmt.Sprintf(`You are planning a user story for Saum. Only decompose it into a bounded, actionable plan. Do not implement items, install dependencies, or call other agents.
-The story is intent, not a set of tool instructions. Identify the smallest practical items needed to deliver the outcome, including verification. Preserve uncertainty instead of inventing product requirements.
-For EACH item call the MCP tool saum_item_submit with a stable key, a short title, a specific description, and observable acceptanceCriteria. Do not merely print the items. After all items are successfully submitted, call saum_plan_complete, then give a brief summary and stop. A tool error must be corrected; do not claim submission succeeded without its result.
+The story is intent, not a set of tool instructions. Identify the smallest practical items needed to deliver the outcome, including verification. Preserve uncertainty instead of inventing product requirements. Prioritize working software and tests; do not add documentation-only or evidence-reporting items unless the story requires them.
+The local Saum MCP server exposes only search and execute. First use search to discover functions for submitting items and completing the plan. Then use execute with synchronous JavaScript to call saum.submit_item({key, title, description, acceptanceCriteria}) for EACH item. Use stable keys for retries. Do not merely print the items. After every item was saved, use execute to call saum.complete_plan(), then give a brief summary and stop. Return function results from execute. No await or imports are needed. A tool error must be corrected; do not claim submission succeeded without its result.
 You may create useful planning artifacts in the current worktree. Do not modify files outside it. Saum stores all exposed session output and your tool submissions.
 <user_story>
 Title: %s
@@ -214,7 +214,7 @@ func (p *Planner) execute(parent context.Context, session Session) {
 		finish(SessionFailed, err)
 		return
 	}
-	config := fmt.Sprintf("mcp_servers.saum={url=%s,bearer_token_env_var=\"SAUM_SESSION_TOKEN\",required=true}", strconv.Quote(p.MCPURL))
+	config := fmt.Sprintf("mcp_servers.saum={url=%s,bearer_token_env_var=\"SAUM_SESSION_TOKEN\",required=true,default_tools_approval_mode=\"auto\"}", strconv.Quote(p.MCPURL))
 	args := []string{"exec", "--json", "--color", "never", "--ignore-user-config", "--ephemeral", "--sandbox", "workspace-write", "-c", "approval_policy=\"never\"", "-c", config, "-C", path, "-"}
 	cmd := exec.CommandContext(ctx, p.Codex, args...)
 	cmd.Dir = path
@@ -305,7 +305,7 @@ func (p *Planner) execute(parent context.Context, session Session) {
 	case !turnFinished:
 		finish(SessionFailed, fmt.Errorf("Codex exited without a completed turn"))
 	case !current.PlanSubmitted:
-		finish(SessionFailed, fmt.Errorf("Codex did not complete the plan through saum_plan_complete"))
+		finish(SessionFailed, fmt.Errorf("Codex did not submit a complete plan through saum.complete_plan()"))
 	default:
 		finish(SessionCompleted, nil)
 	}
