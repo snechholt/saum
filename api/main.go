@@ -46,7 +46,8 @@ func (s *Store) handler(web http.Handler) http.Handler {
 	mux.HandleFunc("POST /api/factories", s.saveFactory)
 	mux.HandleFunc("PUT /api/factories/{factory}", s.saveFactory)
 	mux.HandleFunc("DELETE /api/factories/{factory}", s.removeFactory)
-	mux.HandleFunc("GET /api/factories/{factory}/projects", s.getProjects)
+	mux.HandleFunc("GET /api/factories/{factory}/stories", s.getStories)
+	mux.HandleFunc("POST /api/factories/{factory}/stories", s.postStory)
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) { problem(w, 404, "Not found") })
 	mux.Handle("/", web)
 	return localOnly(mux)
@@ -103,7 +104,7 @@ func (s *Store) removeFactory(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, sql.ErrNoRows):
 		problem(w, 404, "Factory not found")
 	case errors.Is(err, ErrFactoryNotEmpty):
-		problem(w, 409, "Factory still contains projects")
+		problem(w, 409, "Factory still contains user stories")
 	case err != nil:
 		problem(w, 500, "Could not delete factory")
 	default:
@@ -111,17 +112,17 @@ func (s *Store) removeFactory(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Store) getProjects(w http.ResponseWriter, r *http.Request) {
-	projects, err := s.listProjects(r.PathValue("factory"))
+func (s *Store) getStories(w http.ResponseWriter, r *http.Request) {
+	stories, err := s.listStories(r.PathValue("factory"))
 	if errors.Is(err, sql.ErrNoRows) {
 		problem(w, 404, "Factory not found")
 		return
 	}
 	if err != nil {
-		problem(w, 500, "Could not load projects")
+		problem(w, 500, "Could not load user stories")
 		return
 	}
-	jsonResponse(w, 200, projects)
+	jsonResponse(w, 200, stories)
 }
 func localOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

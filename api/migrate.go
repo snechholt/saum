@@ -8,16 +8,21 @@ import (
 	"os"
 )
 
-// One-time cutover from the earlier unscoped project list. Original JSON is kept.
+type previousProject struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// Preserve older entries and their IDs during the terminology cutover. Keep source JSON untouched.
 func migrate(db *sql.DB, legacyFile string) error {
 	var version int
 	if err := db.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
 		return err
 	}
-	if version == 1 {
+	if version == 3 {
 		return nil
 	}
-	if version != 0 {
+	if version < 0 || version > 3 {
 		return fmt.Errorf("unsupported database version %d", version)
 	}
 	tx, err := db.Begin()
@@ -25,40 +30,54 @@ func migrate(db *sql.DB, legacyFile string) error {
 		return err
 	}
 	defer tx.Rollback()
-	projects, err := previousProjects(tx, legacyFile)
-	if err != nil {
-		return err
-	}
-	_, err = tx.Exec(`CREATE TABLE factories (
- id TEXT PRIMARY KEY NOT NULL,
- name TEXT NOT NULL CHECK (length(trim(name)) BETWEEN 1 AND 80)
- );
- CREATE TABLE projects_next (
- id TEXT PRIMARY KEY NOT NULL,
- factory_id TEXT NOT NULL REFERENCES factories(id),
- name TEXT NOT NULL CHECK (length(trim(name)) BETWEEN 1 AND 80)
- );`)
-	if err != nil {
-		return err
-	}
-	if len(projects) > 0 {
-		if _, err = tx.Exec("INSERT INTO factories (id, name) VALUES ('saum', 'Saum')"); err != nil {
+	if version == 0 {
+		projects, err := previousProjects(tx, legacyFile)
+		if err != nil {
 			return err
 		}
-		for _, project := range projects {
-			if _, err = tx.Exec("INSERT INTO projects_next (id, factory_id, name) VALUES (?, 'saum', ?)", project.ID, project.Name); err != nil {
+		if _, err = tx.Exec(`CREATE TABLE factories (id TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL CHECK (length(trim(name)) BETWEEN 1 AND 80));`); err != nil {
+			return err
+		}
+		if _, err = tx.Exec(storySchema); err != nil {
+			return err
+		}
+		if len(projects) > 0 {
+			if _, err = tx.Exec("INSERT INTO factories (id, name) VALUES ('saum', 'Saum')"); err != nil {
 				return err
 			}
+			for _, project := range projects {
+				if _, err = tx.Exec("INSERT INTO user_stories (id, factory_id, title, goal) VALUES (?, 'saum', ?, '')", project.ID, project.Name); err != nil {
+					return err
+				}
+			}
+		}
+	} else {
+		if _, err = tx.Exec(storySchema); err != nil {
+			return err
+		}
+		statement := "INSERT INTO user_stories (id, factory_id, title, goal) SELECT id, factory_id, name, '' FROM projects ORDER BY rowid"
+		if version == 2 {
+			statement = "INSERT INTO user_stories (id, factory_id, title, goal) SELECT id, factory_id, name, goal FROM projects ORDER BY rowid"
+		}
+		if _, err = tx.Exec(statement); err != nil {
+			return err
 		}
 	}
-	if _, err = tx.Exec("DROP TABLE IF EXISTS projects; ALTER TABLE projects_next RENAME TO projects; PRAGMA user_version = 1;"); err != nil {
+	if _, err = tx.Exec("DROP TABLE IF EXISTS projects; PRAGMA user_version = 3;"); err != nil {
 		return err
 	}
 	return tx.Commit()
 }
 
-func previousProjects(tx *sql.Tx, legacyFile string) ([]Project, error) {
-	projects := []Project{}
+const storySchema = `CREATE TABLE user_stories (
+ id TEXT PRIMARY KEY NOT NULL,
+ factory_id TEXT NOT NULL REFERENCES factories(id),
+ title TEXT NOT NULL CHECK (length(trim(title)) BETWEEN 1 AND 80),
+ goal TEXT NOT NULL DEFAULT '' CHECK (length(goal) <= 4000)
+);`
+
+func previousProjects(tx *sql.Tx, legacyFile string) ([]previousProject, error) {
+	projects := []previousProject{}
 	var exists int
 	if err := tx.QueryRow("SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'projects'").Scan(&exists); err != nil {
 		return nil, err
@@ -69,7 +88,7 @@ func previousProjects(tx *sql.Tx, legacyFile string) ([]Project, error) {
 			return nil, err
 		}
 		for rows.Next() {
-			var project Project
+			var project previousProject
 			if err := rows.Scan(&project.ID, &project.Name); err != nil {
 				_ = rows.Close()
 				return nil, err
@@ -86,13 +105,13 @@ func previousProjects(tx *sql.Tx, legacyFile string) ([]Project, error) {
 		return nil, err
 	}
 	if err == nil {
-		var legacy []Project
+		var legacy []previousProject
 		if err = json.Unmarshal(bytes, &legacy); err != nil {
 			return nil, fmt.Errorf("read previous projects: %w", err)
 		}
 		projects = append(projects, legacy...)
 	}
-	unique := []Project{}
+	unique := []previousProject{}
 	seen := map[string]string{}
 	for _, project := range projects {
 		name, err := parseName(project.Name)

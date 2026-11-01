@@ -36,21 +36,21 @@ func TestFactoryCRUD(t *testing.T) {
 		t.Fatalf("expected missing factory, got %v", err)
 	}
 }
-func TestCannotDeleteFactoryWithProjects(t *testing.T) {
+func TestCannotDeleteFactoryWithStories(t *testing.T) {
 	store := testStore(t)
 	factory, err := store.createFactory("Saum")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = store.db.Exec("INSERT INTO projects (id, factory_id, name) VALUES ('todo', ?, 'ToDo')", factory.ID); err != nil {
+	if _, err = store.db.Exec("INSERT INTO user_stories (id, factory_id, title) VALUES ('todo', ?, 'ToDo')", factory.ID); err != nil {
 		t.Fatal(err)
 	}
 	if err = store.deleteFactory(factory.ID); !errors.Is(err, ErrFactoryNotEmpty) {
 		t.Fatalf("expected nonempty factory error, got %v", err)
 	}
-	projects, err := store.listProjects(factory.ID)
-	if err != nil || len(projects) != 1 {
-		t.Fatalf("project lost: %+v %v", projects, err)
+	stories, err := store.listStories(factory.ID)
+	if err != nil || len(stories) != 1 {
+		t.Fatalf("story lost: %+v %v", stories, err)
 	}
 }
 func TestFactoryCRUDHTTP(t *testing.T) {
@@ -63,7 +63,7 @@ func TestFactoryCRUDHTTP(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = store.db.Exec("INSERT INTO projects (id, factory_id, name) VALUES ('todo', ?, 'ToDo')", nonempty.ID); err != nil {
+	if _, err = store.db.Exec("INSERT INTO user_stories (id, factory_id, title) VALUES ('todo', ?, 'ToDo')", nonempty.ID); err != nil {
 		t.Fatal(err)
 	}
 	handler := store.handler(http.NotFoundHandler())

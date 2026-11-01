@@ -20,7 +20,7 @@ func testStore(t *testing.T) *Store {
 	t.Cleanup(func() { _ = store.db.Close() })
 	return store
 }
-func TestFactoriesPersistAndStartWithoutProjects(t *testing.T) {
+func TestFactoriesPersistAndStartWithoutStories(t *testing.T) {
 	file := filepath.Join(t.TempDir(), "factory.sqlite")
 	store, err := openStore(file)
 	if err != nil {
@@ -28,7 +28,7 @@ func TestFactoriesPersistAndStartWithoutProjects(t *testing.T) {
 	}
 	factories, err := store.listFactories()
 	if err != nil || len(factories) != 0 {
-		t.Fatalf("new store is not empty: %v %v", factories, err)
+		t.Fatalf("new store not empty: %v %v", factories, err)
 	}
 	factory, err := store.createFactory("  Saum  ")
 	if err != nil {
@@ -49,12 +49,12 @@ func TestFactoriesPersistAndStartWithoutProjects(t *testing.T) {
 	if err != nil || len(factories) != 1 || factories[0] != factory {
 		t.Fatalf("factory not persisted: %v %v", factories, err)
 	}
-	projects, err := reopened.listProjects(factory.ID)
-	if err != nil || len(projects) != 0 {
-		t.Fatalf("new factory has projects: %v %v", projects, err)
+	stories, err := reopened.listStories(factory.ID)
+	if err != nil || len(stories) != 0 {
+		t.Fatalf("new factory has stories: %v %v", stories, err)
 	}
 }
-func TestProjectsBelongToFactories(t *testing.T) {
+func TestStoriesBelongToFactories(t *testing.T) {
 	store := testStore(t)
 	first, err := store.createFactory("One")
 	if err != nil {
@@ -64,22 +64,27 @@ func TestProjectsBelongToFactories(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = store.db.Exec("INSERT INTO projects (id, factory_id, name) VALUES ('todo', ?, 'ToDo')", first.ID); err != nil {
+	spec, err := parseStorySpec("Manage tasks", "People can keep track of what they need to do.")
+	if err != nil {
 		t.Fatal(err)
 	}
-	projects, err := store.listProjects(first.ID)
-	if err != nil || len(projects) != 1 || projects[0].Name != "ToDo" {
-		t.Fatalf("missing project: %v %v", projects, err)
+	story, err := store.createStory(first.ID, spec)
+	if err != nil {
+		t.Fatal(err)
 	}
-	projects, err = store.listProjects(second.ID)
-	if err != nil || len(projects) != 0 {
-		t.Fatalf("project leaked across factories: %v %v", projects, err)
+	stories, err := store.listStories(first.ID)
+	if err != nil || len(stories) != 1 || stories[0] != story {
+		t.Fatalf("missing story: %v %v", stories, err)
 	}
-	if _, err = store.db.Exec("INSERT INTO projects (id, factory_id, name) VALUES ('invalid', 'missing', 'Invalid')"); err == nil {
-		t.Fatal("accepted orphan project")
+	stories, err = store.listStories(second.ID)
+	if err != nil || len(stories) != 0 {
+		t.Fatalf("story leaked across factories: %v %v", stories, err)
+	}
+	if _, err = store.db.Exec("INSERT INTO user_stories (id, factory_id, title) VALUES ('invalid', 'missing', 'Invalid')"); err == nil {
+		t.Fatal("accepted orphan story")
 	}
 }
-func TestImportPreservesPreviousProjectsOnce(t *testing.T) {
+func TestImportPreservesEarlierEntriesOnce(t *testing.T) {
 	dir := t.TempDir()
 	file := filepath.Join(dir, "factory.sqlite")
 	db, err := sql.Open("sqlite", file)
@@ -104,15 +109,15 @@ func TestImportPreservesPreviousProjectsOnce(t *testing.T) {
 		if err != nil || len(factories) != 1 || factories[0].Name != "Saum" {
 			t.Fatalf("missing imported factory: %v %v", factories, err)
 		}
-		projects, err := store.listProjects("saum")
-		if err != nil || len(projects) != 2 {
-			t.Fatalf("import lost or duplicated projects: %v %v", projects, err)
+		stories, err := store.listStories("saum")
+		if err != nil || len(stories) != 2 {
+			t.Fatalf("import lost or duplicated entries: %v %v", stories, err)
 		}
 		_ = store.db.Close()
 	}
 	bytes, err := os.ReadFile(filepath.Join(dir, "projects.json"))
 	if err != nil || string(bytes) != legacy {
-		t.Fatal("original JSON was changed")
+		t.Fatal("original JSON changed")
 	}
 }
 func TestNames(t *testing.T) {
@@ -137,7 +142,7 @@ func TestFactoryHTTPBoundary(t *testing.T) {
 		{"POST", "/api/factories", `{"name":"test","issues":[]}`, "", 400},
 		{"POST", "/api/factories", `{"name":"test"} {}`, "", 400},
 		{"POST", "/api/factories", `{"name":"test"}`, "https://attacker.example", 403},
-		{"GET", "/api/factories/missing/projects", "", "", 404},
+		{"GET", "/api/factories/missing/stories", "", "", 404},
 		{"POST", "/api/projects", `{"name":"test"}`, "", 404},
 	} {
 		request := httptest.NewRequest(tc.method, "http://127.0.0.1:8080"+tc.path, strings.NewReader(tc.body))

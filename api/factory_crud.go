@@ -10,7 +10,7 @@ func (s *Store) updateFactory(id, rawName string) (Factory, error) {
 	return factory, err
 }
 func (s *Store) deleteFactory(id string) error {
-	result, err := s.db.Exec("DELETE FROM factories WHERE id = ? AND NOT EXISTS (SELECT 1 FROM projects WHERE factory_id = ?)", id, id)
+	result, err := s.db.Exec("DELETE FROM factories WHERE id = ? AND NOT EXISTS (SELECT 1 FROM user_stories WHERE factory_id = ?)", id, id)
 	if err != nil {
 		return err
 	}

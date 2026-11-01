@@ -15,13 +15,14 @@ type Factory struct {
 	Name string `json:"name"`
 }
 
-// Projects have no behavior yet; they belong to a Factory.
-type Project struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+// A UserStory describes a desired outcome within a Factory, not an implementation plan.
+type UserStory struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
+	Goal  string `json:"goal"` // Empty only for entries imported before goals existed.
 }
 
-var ErrFactoryNotEmpty = errors.New("Factory still contains projects")
+var ErrFactoryNotEmpty = errors.New("Factory still contains user stories")
 
 type Store struct{ db *sql.DB }
 
@@ -73,23 +74,23 @@ func (s *Store) createFactory(rawName string) (Factory, error) {
 	}
 	return factory, nil
 }
-func (s *Store) listProjects(factoryID string) ([]Project, error) {
+func (s *Store) listStories(factoryID string) ([]UserStory, error) {
 	var exists int
 	if err := s.db.QueryRow("SELECT 1 FROM factories WHERE id = ?", factoryID).Scan(&exists); err != nil {
 		return nil, err
 	}
-	rows, err := s.db.Query("SELECT id, name FROM projects WHERE factory_id = ? ORDER BY rowid", factoryID)
+	rows, err := s.db.Query("SELECT id, title, goal FROM user_stories WHERE factory_id = ? ORDER BY rowid", factoryID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	projects := []Project{}
+	stories := []UserStory{}
 	for rows.Next() {
-		var project Project
-		if err := rows.Scan(&project.ID, &project.Name); err != nil {
+		var story UserStory
+		if err := rows.Scan(&story.ID, &story.Title, &story.Goal); err != nil {
 			return nil, err
 		}
-		projects = append(projects, project)
+		stories = append(stories, story)
 	}
-	return projects, rows.Err()
+	return stories, rows.Err()
 }
