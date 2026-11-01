@@ -23,9 +23,10 @@ Goal: %s
 Continue in the factory's isolated Git worktree, preserving previous work. Inspect existing files and conventions first. Implement working software and tests, not another plan or evidence document. If there is no application, build the smallest runnable application consistent with this assigned item's approved scope. Do not modify files outside this worktree, deploy, access unrelated credentials, or change the approved plan.
 
 Use MCP search to discover the session-scoped work-item functions. Implement and verify the acceptance criteria ONE AT A TIME, in array order. After each criterion has actual supporting verification, call saum.work_item.submit_acceptance_criteria({criterionIndex,summary,evidence:[...]}) through execute, using the zero-based index. Include concrete test commands and observed results, not promises. Fix tool errors; return results. Execute uses synchronous JavaScript with no await/imports.
+Routine, reversible engineering choices are not product blockers. Honor the operator replies in this assignment: an instruction to create the application authorizes bootstrapping its local foundations with safe conventional defaults, such as an operator-provisioned local account store and server-managed sessions. Make those choices explicit for executive review instead of repeatedly asking the same question. Never invent real user identities, production credentials, or a configured external integration.
 If feedback is present in the item's previous executive reviews, address it on THIS item and re-verify every criterion. Do not treat the factory agent's summary as approval.
 After every criterion has evidence, call saum.work_item.request_review() and STOP. Saum will ask the factory's main agent to prepare an executive summary. ONLY HUMAN APPROVAL of that executive summary permits the next work item. Saum will resume this same Codex thread with either feedback on the current item or the next approved assignment. Do not guess or fetch the next item yourself.
-If a necessary product decision or external dependency blocks safe progress, call saum.work_item.report_blocker({reason}) with the exact missing input and stop. Do not invent security-sensitive identity, recovery, ownership, or production credential requirements, and do not claim incomplete work is done.
+If a necessary product decision or external dependency blocks safe progress, call saum.work_item.report_blocker({reason}) with the exact missing input and stop. Do not invent business-specific ownership rules or pretend an external recovery channel exists, and do not claim incomplete work is done.
 
 <assigned_work_item>
 %s
@@ -55,7 +56,12 @@ If a necessary product decision or external dependency blocks safe progress, cal
 	if len(log) > 120000 {
 		log = log[len(log)-120000:]
 	}
-	return fmt.Sprintf(`You are the MAIN AGENT for this factory, not the goal's implementation agent. Prepare an executive summary of this ONE work item for the human operator to review.
+	plan, err := s.session(item.PlanSessionID)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf(`Your goal worktree is: %s
+You are the MAIN AGENT for this factory, not the goal's implementation agent. Prepare an executive summary of this ONE work item for the human operator to review.
 Story: %s
 Goal: %s
 
@@ -68,5 +74,5 @@ This submission is NOT approval. The operator must explicitly approve this execu
 </work_item_and_evidence>
 <goal_session_transcript>
 %s
-</goal_session_transcript>`, title, goal, data, log), nil
+</goal_session_transcript>`, plan.Worktree, title, goal, data, log), nil
 }

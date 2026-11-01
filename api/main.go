@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -45,6 +44,9 @@ func problem(w http.ResponseWriter, status int, message string) {
 func (s *Store) handler(web http.Handler) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/factories", s.getFactories)
+	mux.HandleFunc("GET /api/settings", s.settingsHTTP)
+	mux.HandleFunc("PUT /api/settings", s.settingsHTTP)
+	mux.HandleFunc("GET /api/audit", s.auditHTTP)
 	mux.HandleFunc("POST /api/factories", s.saveFactory)
 	mux.HandleFunc("PUT /api/factories/{factory}", s.saveFactory)
 	mux.HandleFunc("DELETE /api/factories/{factory}", s.removeFactory)
@@ -170,11 +172,7 @@ func main() {
 		log.Fatal(err)
 	}
 	defer store.db.Close()
-	root, err := filepath.Abs(filepath.Dir(*data))
-	if err != nil {
-		log.Fatal(err)
-	}
-	planner := &Planner{Store: store, Root: root, Codex: *codex, MCPURL: "http://127.0.0.1:8080/mcp"}
+	planner := &Planner{Store: store, Codex: *codex, MCPURL: "http://127.0.0.1:8080/mcp"}
 	store.planner = planner
 	server := &http.Server{
 		Addr:              "127.0.0.1:8080",

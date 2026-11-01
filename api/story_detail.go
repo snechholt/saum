@@ -49,7 +49,7 @@ func (s *Store) getStory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var factory Factory
-	if err := s.db.QueryRow("SELECT id,name FROM factories WHERE id=?", factoryID).Scan(&factory.ID, &factory.Name); err != nil {
+	if err := s.db.QueryRow("SELECT id,name,workspace_root,repository_path FROM factories WHERE id=?", factoryID).Scan(&factory.ID, &factory.Name, &factory.WorkspaceRoot, &factory.RepositoryPath); err != nil {
 		problem(w, 500, "Could not load factory")
 		return
 	}

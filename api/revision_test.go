@@ -14,7 +14,7 @@ func TestFeedbackRevisionRunsInTheExistingWorktree(t *testing.T) {
 	server := httptest.NewServer(store.mcpHandler())
 	defer server.Close()
 	t.Setenv("SAUM_TEST_MCP_URL", server.URL)
-	planner := Planner{Store: store, Root: t.TempDir(), Codex: fakeCodex(t, "full"), MCPURL: server.URL, Timeout: 20 * time.Second}
+	planner := Planner{Store: store, Codex: fakeCodex(t, "full"), MCPURL: server.URL, Timeout: 20 * time.Second}
 	planner.execute(context.Background(), source)
 	original, err := store.session(source.ID)
 	if err != nil || original.Status != SessionCompleted {

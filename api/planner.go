@@ -22,7 +22,6 @@ import (
 
 type Planner struct {
 	Store   *Store
-	Root    string
 	Codex   string
 	MCPURL  string
 	Timeout time.Duration
@@ -130,7 +129,10 @@ func (p *Planner) worktree(ctx context.Context, factoryID, sessionID string) (st
 	if !safeComponent(factoryID) || !safeComponent(sessionID) {
 		return "", fmt.Errorf("invalid workspace identifier")
 	}
-	repo := filepath.Join(p.Root, "factories", factoryID, "repo")
+	workspace, repo, err := p.Store.factoryWorkspace(factoryID)
+	if err != nil {
+		return "", err
+	}
 	if err := os.MkdirAll(repo, 0700); err != nil {
 		return "", err
 	}
@@ -155,7 +157,7 @@ func (p *Planner) worktree(ctx context.Context, factoryID, sessionID string) (st
 		}
 	}
 	// Worktrees live beside their factory repository, not in Saum's own working tree.
-	path := filepath.Join(filepath.Dir(repo), "repo-worktrees", sessionID)
+	path := filepath.Join(workspace, sessionID)
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return "", err
 	}
@@ -251,9 +253,6 @@ func (p *Planner) execute(parent context.Context, session Session) {
 			sandbox = "read-only"
 		}
 		args = append(args, "--json", "--ignore-user-config", "-c", "sandbox_mode="+strconv.Quote(sandbox), "-c", "approval_policy=\"never\"", "-c", config)
-		if session.Kind == ImplementationSession {
-			args = append(args, "-c", "sandbox_workspace_write.network_access=true")
-		}
 		if thread != "" {
 			args = append(args, thread)
 		}

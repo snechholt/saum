@@ -20,7 +20,7 @@ import (
 func twoItemPlan(t *testing.T, store *Store) Session {
 	t.Helper()
 	run := testQueuedSession(t, store)
-	if err := store.startSession(run.ID, t.TempDir(), "plan", "token"); err != nil {
+	if err := store.startSession(run.ID, testSessionWorkspace(t, store, run), "plan", "token"); err != nil {
 		t.Fatal(err)
 	}
 	for _, key := range []string{"first", "second"} {
@@ -295,7 +295,7 @@ func TestGoalAndFactoryAgentMCPRoundTrip(t *testing.T) {
 	binary, _ := os.Executable()
 	script := filepath.Join(t.TempDir(), "codex")
 	_ = os.WriteFile(script, []byte(fmt.Sprintf("#!/bin/sh\nexec %q -test.run=^TestWorkItemHelperProcess$ -- \"$@\"\n", binary)), 0700)
-	planner := Planner{Store: store, Root: filepath.Dir(plan.Worktree), Codex: script, MCPURL: server.URL, Timeout: 30 * time.Second}
+	planner := Planner{Store: store, Codex: script, MCPURL: server.URL, Timeout: 30 * time.Second}
 	for itemIndex := range 2 {
 		goal, err := store.claimSession()
 		if err != nil {

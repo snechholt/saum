@@ -20,7 +20,11 @@ func (p *Planner) sessionWorkspace(ctx context.Context, session Session, factory
 	if parent.StoryID != session.StoryID || parent.Status != SessionCompleted || !parent.PlanSubmitted {
 		return "", fmt.Errorf("revision source is not a submitted plan for this story")
 	}
-	relative, err := filepath.Rel(p.Root, parent.Worktree)
+	workspace, repo, err := p.Store.factoryWorkspace(factoryID)
+	if err != nil {
+		return "", err
+	}
+	relative, err := filepath.Rel(workspace, parent.Worktree)
 	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || parent.Worktree == "" {
 		return "", fmt.Errorf("revision workspace is outside the factory storage")
 	}
@@ -30,6 +34,9 @@ func (p *Planner) sessionWorkspace(ctx context.Context, session Session, factory
 	}
 	if !info.IsDir() {
 		return "", fmt.Errorf("revision workspace is unavailable")
+	}
+	if session.Kind == SummarySession {
+		return repo, nil
 	}
 	return parent.Worktree, nil
 }

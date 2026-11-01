@@ -11,8 +11,10 @@ import (
 )
 
 type Factory struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	WorkspaceRoot  string `json:"workspaceRoot"`
+	RepositoryPath string `json:"repositoryPath"`
 }
 
 // A UserStory describes a desired outcome within a Factory, not an implementation plan.
@@ -51,10 +53,14 @@ func openStore(file string) (*Store, error) {
 		_ = db.Close()
 		return nil, err
 	}
+	if err := migrateSettings(db, filepath.Dir(file)); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
 	return &Store{db: db}, nil
 }
 func (s *Store) listFactories() ([]Factory, error) {
-	rows, err := s.db.Query("SELECT id, name FROM factories ORDER BY rowid")
+	rows, err := s.db.Query("SELECT id,name,workspace_root,repository_path FROM factories ORDER BY rowid")
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +68,7 @@ func (s *Store) listFactories() ([]Factory, error) {
 	factories := []Factory{}
 	for rows.Next() {
 		var factory Factory
-		if err := rows.Scan(&factory.ID, &factory.Name); err != nil {
+		if err := rows.Scan(&factory.ID, &factory.Name, &factory.WorkspaceRoot, &factory.RepositoryPath); err != nil {
 			return nil, err
 		}
 		factories = append(factories, factory)
@@ -74,8 +80,14 @@ func (s *Store) createFactory(rawName string) (Factory, error) {
 	if err != nil {
 		return Factory{}, err
 	}
+	settings, err := s.settings()
+	if err != nil {
+		return Factory{}, err
+	}
 	factory := Factory{ID: rand.Text(), Name: name}
-	_, err = s.db.Exec("INSERT INTO factories (id, name) VALUES (?, ?)", factory.ID, factory.Name)
+	factory.WorkspaceRoot = filepath.Join(settings.FactoriesRoot, factory.ID)
+	factory.RepositoryPath = filepath.Join(factory.WorkspaceRoot, "main")
+	_, err = s.db.Exec("INSERT INTO factories (id,name,workspace_root,repository_path) VALUES (?,?,?,?)", factory.ID, factory.Name, factory.WorkspaceRoot, factory.RepositoryPath)
 	if err != nil {
 		return Factory{}, err
 	}

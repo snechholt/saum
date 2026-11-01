@@ -6,7 +6,7 @@ func (s *Store) updateFactory(id, rawName string) (Factory, error) {
 		return Factory{}, err
 	}
 	var factory Factory
-	err = s.db.QueryRow("UPDATE factories SET name = ? WHERE id = ? RETURNING id, name", name, id).Scan(&factory.ID, &factory.Name)
+	err = s.db.QueryRow("UPDATE factories SET name = ? WHERE id = ? RETURNING id,name,workspace_root,repository_path", name, id).Scan(&factory.ID, &factory.Name, &factory.WorkspaceRoot, &factory.RepositoryPath)
 	return factory, err
 }
 func (s *Store) deleteFactory(id string) error {

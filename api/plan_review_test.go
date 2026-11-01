@@ -10,7 +10,7 @@ import (
 func submittedPlan(t *testing.T, store *Store) (Session, ActionItem) {
 	t.Helper()
 	session := testQueuedSession(t, store)
-	if err := store.startSession(session.ID, t.TempDir(), "prompt", "secret"); err != nil {
+	if err := store.startSession(session.ID, testSessionWorkspace(t, store, session), "prompt", "secret"); err != nil {
 		t.Fatal(err)
 	}
 	item, err := store.submitItem(session.ID, ItemSubmission{Key: "login", Title: "Login 🎯", Description: "Users sign in securely.", AcceptanceCriteria: []string{"Valid credentials open the private area", "Invalid credentials are rejected"}})

@@ -46,6 +46,19 @@ func testQueuedSession(t *testing.T, store *Store) Session {
 	}
 	return session
 }
+func testSessionWorkspace(t *testing.T, store *Store, run Session) string {
+	t.Helper()
+	factoryID, _, _, err := store.storyContext(run.StoryID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := Planner{Store: store}
+	path, err := p.worktree(context.Background(), factoryID, run.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
 func fakeCodex(t *testing.T, mode string) string {
 	t.Helper()
 	t.Setenv("SAUM_TEST_CODEX_MODE", mode)
@@ -146,7 +159,7 @@ func TestPlannerPersistsRealMCPCallsAndWorktreeArtifacts(t *testing.T) {
 	server := httptest.NewServer(store.mcpHandler())
 	defer server.Close()
 	t.Setenv("SAUM_TEST_MCP_URL", server.URL)
-	planner := Planner{Store: store, Root: t.TempDir(), Codex: fakeCodex(t, "full"), MCPURL: server.URL, Timeout: 20 * time.Second}
+	planner := Planner{Store: store, Codex: fakeCodex(t, "full"), MCPURL: server.URL, Timeout: 20 * time.Second}
 	planner.execute(context.Background(), session)
 	result, err := store.session(session.ID)
 	if err != nil {
@@ -192,7 +205,7 @@ func TestProcessExitIsNotPlanCompletion(t *testing.T) {
 		t.Run(mode, func(t *testing.T) {
 			store := testStore(t)
 			session := testQueuedSession(t, store)
-			planner := Planner{Store: store, Root: t.TempDir(), Codex: fakeCodex(t, mode), MCPURL: "http://127.0.0.1:1/mcp"}
+			planner := Planner{Store: store, Codex: fakeCodex(t, mode), MCPURL: "http://127.0.0.1:1/mcp"}
 			planner.execute(context.Background(), session)
 			result, err := store.session(session.ID)
 			if err != nil || result.Status != SessionFailed || result.Error == "" {
@@ -204,7 +217,7 @@ func TestProcessExitIsNotPlanCompletion(t *testing.T) {
 func TestPlanningCancellationAndRecovery(t *testing.T) {
 	store := testStore(t)
 	session := testQueuedSession(t, store)
-	planner := Planner{Store: store, Root: t.TempDir(), Codex: fakeCodex(t, "hang"), MCPURL: "http://127.0.0.1:1/mcp"}
+	planner := Planner{Store: store, Codex: fakeCodex(t, "hang"), MCPURL: "http://127.0.0.1:1/mcp"}
 	done := make(chan struct{})
 	go func() { planner.execute(context.Background(), session); close(done) }()
 	deadline := time.Now().Add(10 * time.Second)
