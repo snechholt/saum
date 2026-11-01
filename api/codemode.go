@@ -20,11 +20,11 @@ type FunctionInfo struct {
 }
 
 var saumFunctions = []FunctionInfo{
-	{Kind: ImplementationSession, Name: "saum.start_item", Description: "Mark an approved item as in progress before implementing it. Only one item may run at a time.", Signature: "saum.start_item({key: string}): {key,title,status,summary}", Example: `return saum.start_item({key:"login-form"});`},
-	{Kind: ImplementationSession, Name: "saum.complete_item", Description: "Report an item complete after implementing and testing its acceptance criteria. Requires start_item first.", Signature: "saum.complete_item({key: string,summary: string}): {completed: boolean}", Example: `return saum.complete_item({key:"login-form",summary:"Implemented login; the authentication tests pass."});`},
-	{Kind: ImplementationSession, Name: "saum.block_item", Description: "Report an item blocked with the specific missing decision or dependency. Never mark blocked work complete.", Signature: "saum.block_item({key: string,summary: string}): {blocked: boolean}", Example: `return saum.block_item({key:"password-reset",summary:"Which verified recovery channel should deliver reset credentials?"});`},
-	{Kind: ImplementationSession, Name: "saum.complete_implementation", Description: "Submit the implementation only after every approved item is complete. Does not deploy the application.", Signature: "saum.complete_implementation({summary: string}): {submitted: boolean}", Example: `return saum.complete_implementation({summary:"Implemented and tested all three items. Run bun dev in this worktree."});`},
 
+	{Kind: ImplementationSession, Name: "saum.work_item.submit_acceptance_criteria", Description: "Submit verification evidence for ONE acceptance criterion of the assigned work item, in criterion order. This is not human approval.", Signature: "saum.work_item.submit_acceptance_criteria({criterionIndex:number,summary:string,evidence:string[]}): {submitted:boolean}", Example: `return saum.work_item.submit_acceptance_criteria({criterionIndex:0,summary:"Valid login works",evidence:["bun test auth: 4 tests passed"]});`},
+	{Kind: ImplementationSession, Name: "saum.work_item.request_review", Description: "Request a factory-agent executive summary after every criterion has evidence. Then stop. Only human approval of that summary unlocks the next item.", Signature: "saum.work_item.request_review(): {requested:boolean}", Example: "return saum.work_item.request_review();"},
+	{Kind: ImplementationSession, Name: "saum.work_item.report_blocker", Description: "Report the exact missing decision or dependency blocking this assigned item, then stop.", Signature: "saum.work_item.report_blocker({reason:string}): {blocked:boolean}", Example: `return saum.work_item.report_blocker({reason:"Which verified recovery channel should be used?"});`},
+	{Kind: SummarySession, Name: "saum.work_item.submit_executive_summary", Description: "The factory main agent submits a human-readable executive summary, verification assessment, and risks for the assigned work item. Does not approve it.", Signature: "saum.work_item.submit_executive_summary({summary:string,verification:string,risks:string[]}): {submitted:boolean}", Example: `return saum.work_item.submit_executive_summary({summary:"Users can sign in securely.",verification:"Observed 4 passing auth tests in the goal transcript.",risks:["Recovery is a later item."]});`},
 	{Name: "saum.submit_item", Description: "Save one actionable item in this session's user-story plan. A key is idempotent only when the content is identical. Calls commit independently.", Signature: "saum.submit_item({key: string, title: string, description: string, acceptanceCriteria: string[]}): {id, sessionId, key, title, description, acceptanceCriteria}", Example: `return saum.submit_item({key:"login-form",title:"Deliver sign-in",description:"Let existing users sign in with their credentials.",acceptanceCriteria:["Valid credentials open the private area","Invalid credentials are rejected"]});`},
 	{Name: "saum.update_item", Description: "Replace an existing item in the current working plan. Provide every field, preserving its key. Never changes an earlier submitted plan.", Signature: "saum.update_item({key: string, title: string, description: string, acceptanceCriteria: string[]}): Item", Example: `return saum.update_item({key:"login-form",title:"Deliver sign-in",description:"Use the revised behavior.",acceptanceCriteria:["Revised behavior works"]});`},
 	{Name: "saum.remove_item", Description: "Remove an item by key from the current working plan only.", Signature: "saum.remove_item({key: string}): {removed: boolean}", Example: `return saum.remove_item({key:"unnecessary-item"});`},
@@ -95,6 +95,10 @@ func (s *Store) runCode(parent context.Context, sessionID, code string) (any, er
 	}()
 	defer close(done)
 	namespace := runtime.NewObject()
+	workItemNamespace := runtime.NewObject()
+	if err := namespace.Set("work_item", workItemNamespace); err != nil {
+		return nil, err
+	}
 	calls := 0
 	check := func() {
 		calls++
@@ -106,7 +110,12 @@ func (s *Store) runCode(parent context.Context, sessionID, code string) (any, er
 		}
 	}
 	bind := func(name string, handler func([]byte) (any, error)) error {
-		return namespace.Set(name, func(call goja.FunctionCall) goja.Value {
+		target := namespace
+		if strings.HasPrefix(name, "work_item.") {
+			target = workItemNamespace
+			name = strings.TrimPrefix(name, "work_item.")
+		}
+		return target.Set(name, func(call goja.FunctionCall) goja.Value {
 			check()
 			data := []byte("{}")
 			if !goja.IsUndefined(call.Argument(0)) {
@@ -143,39 +152,35 @@ func (s *Store) runCode(parent context.Context, sessionID, code string) (any, er
 		name string
 		call func([]byte) (any, error)
 	}{
-		{"start_item", func(data []byte) (any, error) {
+
+		{"work_item.submit_acceptance_criteria", func(data []byte) (any, error) {
+			var input CriterionInput
+			if err := decode(data, &input); err != nil {
+				return nil, err
+			}
+			err := s.submitAcceptanceCriterion(sessionID, input)
+			return map[string]bool{"submitted": err == nil}, err
+		}},
+		{"work_item.request_review", func(data []byte) (any, error) {
+			err := s.requestWorkItemReview(sessionID)
+			return map[string]bool{"requested": err == nil}, err
+		}},
+		{"work_item.report_blocker", func(data []byte) (any, error) {
 			var input struct {
-				Key string `json:"key"`
+				Reason string `json:"reason"`
 			}
 			if err := decode(data, &input); err != nil {
 				return nil, err
 			}
-			return s.startImplementationItem(sessionID, input.Key)
-		}},
-		{"complete_item", func(data []byte) (any, error) {
-			var input ItemProgress
-			if err := decode(data, &input); err != nil {
-				return nil, err
-			}
-			err := s.reportImplementationItem(sessionID, input, false)
-			return map[string]bool{"completed": err == nil}, err
-		}},
-		{"block_item", func(data []byte) (any, error) {
-			var input ItemProgress
-			if err := decode(data, &input); err != nil {
-				return nil, err
-			}
-			err := s.reportImplementationItem(sessionID, input, true)
+			err := s.blockWorkItem(sessionID, input.Reason)
 			return map[string]bool{"blocked": err == nil}, err
 		}},
-		{"complete_implementation", func(data []byte) (any, error) {
-			var input struct {
-				Summary string `json:"summary"`
-			}
+		{"work_item.submit_executive_summary", func(data []byte) (any, error) {
+			var input ExecutiveSummaryInput
 			if err := decode(data, &input); err != nil {
 				return nil, err
 			}
-			err := s.completeImplementation(sessionID, input.Summary)
+			err := s.submitExecutiveSummary(sessionID, input)
 			return map[string]bool{"submitted": err == nil}, err
 		}},
 		{"submit_item", func(data []byte) (any, error) {

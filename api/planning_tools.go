@@ -145,7 +145,7 @@ func (s *Store) mcpHandler() http.Handler {
 			return nil
 		}
 		closedWorld := false
-		server := mcp.NewServer(&mcp.Implementation{Name: "saum", Version: "0.1.0"}, &mcp.ServerOptions{Instructions: "Use search to discover session-scoped Saum functions. Use execute to run synchronous JavaScript with the saum namespace; return a JSON value. There is no filesystem, network, import, or process API inside execute. Functions commit independently. Follow the session prompt: planning sessions only revise plans; implementation sessions build the approved plan without changing it."})
+		server := mcp.NewServer(&mcp.Implementation{Name: "saum", Version: "0.1.0"}, &mcp.ServerOptions{Instructions: "Use search to discover session-scoped Saum functions. Use execute to run synchronous JavaScript with the saum namespace; return a JSON value. There is no filesystem, network, import, or process API inside execute. Functions commit independently. Follow the session prompt: planning sessions only revise plans; implementation sessions work only on their assigned work item; summary sessions act as the factory main agent and prepare executive summaries, never approving or implementing work."})
 		mcp.AddTool(server, &mcp.Tool{Name: "search", Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: &closedWorld}, Description: "Discover Saum functions, signatures, and examples by keywords. An empty query lists all functions."}, func(ctx context.Context, request *mcp.CallToolRequest, input struct {
 			Query string `json:"query"`
 		}) (*mcp.CallToolResult, map[string]any, error) {

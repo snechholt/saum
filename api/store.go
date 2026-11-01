@@ -23,6 +23,7 @@ type UserStory struct {
 	PlanningStatus string      `json:"planningStatus"`
 	SessionID      string      `json:"sessionId"`
 	SessionKind    SessionKind `json:"sessionKind"`
+	GoalStatus     string      `json:"goalStatus"`
 }
 
 var ErrFactoryNotEmpty = errors.New("Factory still contains user stories")
@@ -88,7 +89,13 @@ func (s *Store) listStories(factoryID string) ([]UserStory, error) {
 	rows, err := s.db.Query(`SELECT id, title, goal,
  CASE WHEN length(trim(goal))=0 THEN 'needs_goal' ELSE COALESCE((SELECT status FROM sessions WHERE story_id=user_stories.id ORDER BY rowid DESC LIMIT 1),'queued') END,
  COALESCE((SELECT id FROM sessions WHERE story_id=user_stories.id ORDER BY rowid DESC LIMIT 1),''),
- COALESCE((SELECT kind FROM sessions WHERE story_id=user_stories.id ORDER BY rowid DESC LIMIT 1),'planning')
+ COALESCE((SELECT kind FROM sessions WHERE story_id=user_stories.id ORDER BY rowid DESC LIMIT 1),'planning'),
+ CASE WHEN NOT EXISTS(SELECT 1 FROM goal_workflows JOIN sessions AS plan ON plan.id=plan_session_id WHERE plan.story_id=user_stories.id) THEN 'planning'
+ WHEN EXISTS(SELECT 1 FROM work_items JOIN sessions AS plan ON plan.id=work_items.plan_session_id WHERE plan.story_id=user_stories.id AND work_items.status='blocked') THEN 'blocked'
+ WHEN EXISTS(SELECT 1 FROM work_items JOIN sessions AS plan ON plan.id=work_items.plan_session_id WHERE plan.story_id=user_stories.id AND work_items.status='failed') THEN 'failed'
+ WHEN EXISTS(SELECT 1 FROM work_items JOIN sessions AS plan ON plan.id=work_items.plan_session_id WHERE plan.story_id=user_stories.id AND work_items.status='awaiting_review') THEN 'awaiting_review'
+ WHEN EXISTS(SELECT 1 FROM work_items JOIN sessions AS plan ON plan.id=work_items.plan_session_id WHERE plan.story_id=user_stories.id AND work_items.status<>'approved') THEN 'working'
+ ELSE 'completed' END
  FROM user_stories WHERE factory_id = ? ORDER BY rowid`, factoryID)
 	if err != nil {
 		return nil, err
@@ -97,7 +104,7 @@ func (s *Store) listStories(factoryID string) ([]UserStory, error) {
 	stories := []UserStory{}
 	for rows.Next() {
 		var story UserStory
-		if err := rows.Scan(&story.ID, &story.Title, &story.Goal, &story.PlanningStatus, &story.SessionID, &story.SessionKind); err != nil {
+		if err := rows.Scan(&story.ID, &story.Title, &story.Goal, &story.PlanningStatus, &story.SessionID, &story.SessionKind, &story.GoalStatus); err != nil {
 			return nil, err
 		}
 		stories = append(stories, story)

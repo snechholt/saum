@@ -17,18 +17,18 @@ func (s *Store) getSession(w http.ResponseWriter, r *http.Request) {
 		problem(w, 500, "Could not load session")
 		return
 	}
-	build, err := s.implementation(session.ID)
-	if err != nil {
-		problem(w, 500, "Could not load implementation")
-		return
-	}
 	planSession := session
-	if build != nil {
-		planSession, err = s.session(build.PlanSessionID)
+	if session.Kind != PlanningSession {
+		planSession, err = s.session(session.ParentSessionID)
 		if err != nil {
 			problem(w, 500, "Could not load approved plan")
 			return
 		}
+	}
+	workflow, err := s.workflow(planSession.ID)
+	if err != nil {
+		problem(w, 500, "Could not load work items")
+		return
 	}
 	items, err := s.items(planSession.ID)
 	if err != nil {
@@ -46,13 +46,13 @@ func (s *Store) getSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jsonResponse(w, 200, struct {
-		Session          Session         `json:"session"`
-		PlanSession      Session         `json:"planSession"`
-		Implementation   *Implementation `json:"implementation"`
-		Items            []ActionItem    `json:"items"`
-		Comments         []PlanComment   `json:"comments"`
-		ReceivedFeedback []PlanComment   `json:"receivedFeedback"`
-	}{session, planSession, build, items, comments, feedback})
+		Session          Session       `json:"session"`
+		PlanSession      Session       `json:"planSession"`
+		Workflow         *GoalWorkflow `json:"workflow"`
+		Items            []ActionItem  `json:"items"`
+		Comments         []PlanComment `json:"comments"`
+		ReceivedFeedback []PlanComment `json:"receivedFeedback"`
+	}{session, planSession, workflow, items, comments, feedback})
 }
 func (s *Store) getSessionEvents(w http.ResponseWriter, r *http.Request) {
 	if _, err := s.session(r.PathValue("session")); errors.Is(err, sql.ErrNoRows) {
@@ -101,12 +101,11 @@ func (s *Store) cancelSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if session.Status == SessionQueued {
-		result, err := s.db.Exec("UPDATE sessions SET status='cancelled',finished_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=? AND status='queued'", session.ID)
+		count, err := s.cancelQueuedSession(session.ID)
 		if err != nil {
 			problem(w, 500, "Could not cancel session")
 			return
 		}
-		count, _ := result.RowsAffected()
 		if count == 0 && (s.planner == nil || !s.planner.Cancel(session.ID)) {
 			problem(w, 409, "Session is being claimed; try again")
 			return

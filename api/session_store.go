@@ -223,7 +223,12 @@ func (s *Store) items(sessionID string) ([]ActionItem, error) {
 }
 func (s *Store) startSession(id, worktree, prompt, token string) error {
 	hash := sha256.Sum256([]byte(token))
-	result, err := s.db.Exec("UPDATE sessions SET status='running',worktree=?,prompt=?,token_hash=? WHERE id=? AND status='preparing'", worktree, prompt, hash[:], id)
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	result, err := tx.Exec("UPDATE sessions SET status='running',worktree=?,prompt=?,token_hash=? WHERE id=? AND status='preparing'", worktree, prompt, hash[:], id)
 	if err != nil {
 		return err
 	}
@@ -231,11 +236,35 @@ func (s *Store) startSession(id, worktree, prompt, token string) error {
 	if err == nil && n != 1 {
 		return fmt.Errorf("session is not preparing")
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	if _, err := tx.Exec("UPDATE work_items SET status='working' WHERE current_session_id=? AND status='queued'", id); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 func (s *Store) finishSession(id string, status SessionStatus, message string) error {
-	_, err := s.db.Exec("UPDATE sessions SET status=?,error=?,finished_at=?,token_hash=NULL WHERE id=? AND status IN ('preparing','running')", status, message, time.Now().UTC().Format(time.RFC3339Nano), id)
-	return err
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	result, err := tx.Exec("UPDATE sessions SET status=?,error=?,finished_at=?,token_hash=NULL WHERE id=? AND (status IN ('preparing','running') OR (status='queued' AND ?='cancelled'))", status, message, time.Now().UTC().Format(time.RFC3339Nano), id, status)
+	if err != nil {
+		return err
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return nil
+	}
+	if err := finishWorkItemSession(tx, id, status, message); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 func (s *Store) authenticatedSession(token string) (Session, error) {
 	if token == "" {

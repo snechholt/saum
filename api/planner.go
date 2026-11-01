@@ -218,8 +218,8 @@ func (p *Planner) execute(parent context.Context, session Session) {
 			return
 		}
 	}
-	if session.Kind == ImplementationSession {
-		prompt, err = p.Store.implementationPrompt(session, title, goal)
+	if session.Kind == ImplementationSession || session.Kind == SummarySession {
+		prompt, err = p.Store.workItemPrompt(session, title, goal)
 		if err != nil {
 			finish(SessionFailed, err)
 			return
@@ -236,8 +236,28 @@ func (p *Planner) execute(parent context.Context, session Session) {
 	}
 	config := fmt.Sprintf("mcp_servers.saum={url=%s,bearer_token_env_var=\"SAUM_SESSION_TOKEN\",required=true,default_tools_approval_mode=\"approve\"}", strconv.Quote(p.MCPURL))
 	args := []string{"exec", "--json", "--color", "never", "--ignore-user-config", "--ephemeral", "--sandbox", "workspace-write", "-c", "approval_policy=\"never\"", "-c", config, "-C", path, "-"}
-	if session.Kind == ImplementationSession {
-		args = append(args[:len(args)-1], "-c", "sandbox_workspace_write.network_access=true", "-")
+	if session.Kind != PlanningSession {
+		thread, err := p.Store.sessionThread(session)
+		if err != nil {
+			finish(SessionFailed, err)
+			return
+		}
+		args = []string{"-C", path, "exec"}
+		if thread != "" {
+			args = append(args, "resume")
+		}
+		sandbox := "workspace-write"
+		if session.Kind == SummarySession {
+			sandbox = "read-only"
+		}
+		args = append(args, "--json", "--ignore-user-config", "-c", "sandbox_mode="+strconv.Quote(sandbox), "-c", "approval_policy=\"never\"", "-c", config)
+		if session.Kind == ImplementationSession {
+			args = append(args, "-c", "sandbox_workspace_write.network_access=true")
+		}
+		if thread != "" {
+			args = append(args, thread)
+		}
+		args = append(args, "-")
 	}
 	cmd := exec.CommandContext(ctx, p.Codex, args...)
 	cmd.Dir = path
@@ -296,7 +316,7 @@ func (p *Planner) execute(parent context.Context, session Session) {
 		}
 		switch event.Type {
 		case "thread.started":
-			if _, err = p.Store.db.Exec("UPDATE sessions SET thread_id=? WHERE id=?", event.ThreadID, session.ID); err != nil {
+			if err = p.Store.saveSessionThread(session, event.ThreadID); err != nil {
 				cancel()
 			}
 		case "turn.completed":
@@ -327,21 +347,9 @@ func (p *Planner) execute(parent context.Context, session Session) {
 		finish(SessionFailed, readErr)
 	case !turnFinished:
 		finish(SessionFailed, fmt.Errorf("Codex exited without a completed turn"))
-	case current.Kind == ImplementationSession:
-		build, err := p.Store.implementation(session.ID)
-		if err != nil {
+	case current.Kind == ImplementationSession || current.Kind == SummarySession:
+		if err := p.Store.workItemTurnReady(current); err != nil {
 			finish(SessionFailed, err)
-		} else if build == nil || !build.Submitted {
-			message := "Codex did not complete the implementation through saum.complete_implementation()"
-			if build != nil {
-				for _, item := range build.Items {
-					if item.Status == "blocked" {
-						message = "Blocked: " + item.Title + ": " + item.Summary
-						break
-					}
-				}
-			}
-			finish(SessionFailed, errors.New(message))
 		} else {
 			finish(SessionCompleted, nil)
 		}

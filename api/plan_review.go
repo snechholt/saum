@@ -248,7 +248,7 @@ func (s *Store) approvePlan(id string) error {
 	if _, err := tx.Exec("UPDATE sessions SET review_status='approved',reviewed_at=? WHERE id=?", time.Now().UTC().Format(time.RFC3339Nano), id); err != nil {
 		return err
 	}
-	if _, err := queueImplementation(tx, id); err != nil {
+	if _, err := queueFirstWorkItem(tx, id); err != nil {
 		return err
 	}
 	return tx.Commit()
