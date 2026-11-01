@@ -227,6 +227,10 @@ func TestWorkItemHelperProcess(t *testing.T) {
 	}
 	input, _ := io.ReadAll(os.Stdin)
 	args := strings.Join(os.Args, " ")
+	if !strings.Contains(args, "--dangerously-bypass-approvals-and-sandbox") || strings.Contains(args, "sandbox_workspace_write") {
+		fmt.Fprintln(os.Stderr, "Codex must run with full host permissions")
+		os.Exit(1)
+	}
 	if strings.Contains(args, "--ephemeral") {
 		fmt.Fprintln(os.Stderr, "goal and factory threads must persist")
 		os.Exit(9)

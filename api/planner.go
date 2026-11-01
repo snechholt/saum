@@ -257,7 +257,7 @@ func (p *Planner) execute(parent context.Context, session Session) {
 		return
 	}
 	config := fmt.Sprintf("mcp_servers.saum={url=%s,bearer_token_env_var=\"SAUM_SESSION_TOKEN\",required=true,default_tools_approval_mode=\"approve\"}", strconv.Quote(p.MCPURL))
-	args := []string{"exec", "--json", "--color", "never", "--ignore-user-config", "--ephemeral", "--sandbox", "workspace-write", "-c", "approval_policy=\"never\"", "-c", config, "-C", ".", "-"}
+	args := []string{"exec", "--json", "--color", "never", "--ignore-user-config", "--ephemeral", "--dangerously-bypass-approvals-and-sandbox", "-c", config, "-C", ".", "-"}
 	if session.Kind != PlanningSession {
 		thread, err := p.Store.sessionThread(session)
 		if err != nil {
@@ -268,11 +268,7 @@ func (p *Planner) execute(parent context.Context, session Session) {
 		if thread != "" {
 			args = append(args, "resume")
 		}
-		sandbox := "workspace-write"
-		if session.Kind == SummarySession {
-			sandbox = "read-only"
-		}
-		args = append(args, "--json", "--ignore-user-config", "-c", "sandbox_mode="+strconv.Quote(sandbox), "-c", "approval_policy=\"never\"", "-c", config)
+		args = append(args, "--json", "--ignore-user-config", "--dangerously-bypass-approvals-and-sandbox", "-c", config)
 		if thread != "" {
 			args = append(args, thread)
 		}

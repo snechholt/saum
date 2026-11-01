@@ -78,6 +78,10 @@ func TestCodexHelperProcess(t *testing.T) {
 	if mode == "" {
 		return
 	}
+	if !strings.Contains(strings.Join(os.Args, " "), "--dangerously-bypass-approvals-and-sandbox") || strings.Contains(strings.Join(os.Args, " "), "sandbox_workspace_write") {
+		fmt.Fprintln(os.Stderr, "Codex must run with full host permissions")
+		os.Exit(1)
+	}
 	if !strings.Contains(strings.Join(os.Args, " "), `default_tools_approval_mode="approve"`) {
 		fmt.Fprintln(os.Stderr, "Saum tools need explicit scoped approval")
 		os.Exit(8)
