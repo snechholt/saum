@@ -1,11 +1,14 @@
 import { useState, type ReactNode } from "react";
+import { Input } from "@cloudflare/kumo/components/input";
+import { LayerCard } from "@cloudflare/kumo/components/layer-card";
+import { Table } from "@cloudflare/kumo/components/table";
+import { ArrowDown, ArrowUp, ArrowsDownUp } from "@phosphor-icons/react";
 import { tableRows, type Sort, type ValueColumn } from "./data";
 
 export type Column<T> = ValueColumn<T> & {
   header: string;
   render?: (row: T) => ReactNode;
 };
-
 type Props<T> = {
   rows: readonly T[];
   columns: readonly Column<T>[];
@@ -32,69 +35,79 @@ export function DataTable<T>({ rows, columns, rowKey, label, emptyMessage, actio
 
   return (
     <div className="data-table">
-      <input
-        className="table-filter"
-        type="search"
-        aria-label={`Filter ${label.toLowerCase()}`}
-        placeholder="Filter…"
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-      />
-      <div className="table-scroll">
-        <table aria-label={label}>
-          <thead>
-            <tr>
-              {columns.map((column) => (
-                <th
-                  key={column.id}
-                  scope="col"
-                  aria-sort={sort?.column === column.id ? sort.direction : "none"}
-                >
-                  <button
-                    type="button"
-                    onClick={() => sortColumn(column.id)}
-                    aria-label={`Sort by ${column.header.toLowerCase()}`}
-                  >
-                    {column.header}
-                    <span aria-hidden="true">
-                      {sort?.column === column.id
-                        ? sort.direction === "ascending"
-                          ? "↑"
-                          : "↓"
-                        : "↕"}
-                    </span>
-                  </button>
-                </th>
-              ))}
-              {actions && (
-                <th scope="col">
-                  <span className="table-sr-only">Actions</span>
-                </th>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {visible.length === 0 ? (
-              <tr>
-                <td className="table-empty" colSpan={columns.length + (actions ? 1 : 0)}>
-                  {rows.length === 0 ? emptyMessage : "No matches"}
-                </td>
-              </tr>
-            ) : (
-              visible.map((row) => (
-                <tr key={rowKey(row)}>
-                  {columns.map((column) => (
-                    <td key={column.id}>
-                      {column.render ? column.render(row) : column.value(row)}
-                    </td>
-                  ))}
-                  {actions && <td className="table-actions">{actions(row)}</td>}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      <div className="table-toolbar">
+        <Input
+          className="table-filter"
+          type="search"
+          aria-label={`Filter ${label.toLowerCase()}`}
+          placeholder="Filter…"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
       </div>
+      <LayerCard className="table-surface">
+        <div className="table-scroll">
+          <Table aria-label={label}>
+            <Table.Header variant="compact">
+              <Table.Row>
+                {columns.map((column) => (
+                  <Table.Head
+                    key={column.id}
+                    aria-sort={sort?.column === column.id ? sort.direction : "none"}
+                  >
+                    <button
+                      className="table-sort"
+                      type="button"
+                      onClick={() => sortColumn(column.id)}
+                      aria-label={`Sort by ${column.header.toLowerCase()}`}
+                    >
+                      {column.header}
+                      {sort?.column === column.id ? (
+                        sort.direction === "ascending" ? (
+                          <ArrowUp size={14} aria-hidden />
+                        ) : (
+                          <ArrowDown size={14} aria-hidden />
+                        )
+                      ) : (
+                        <ArrowsDownUp size={14} aria-hidden />
+                      )}
+                    </button>
+                  </Table.Head>
+                ))}
+                {actions && (
+                  <Table.Head>
+                    <span className="table-sr-only">Actions</span>
+                  </Table.Head>
+                )}
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
+              {visible.length === 0 ? (
+                <Table.Row>
+                  <Table.Cell className="table-empty" colSpan={columns.length + (actions ? 1 : 0)}>
+                    {rows.length === 0 ? emptyMessage : "No matches"}
+                  </Table.Cell>
+                </Table.Row>
+              ) : (
+                visible.map((row) => (
+                  <Table.Row key={rowKey(row)}>
+                    {columns.map((column) => (
+                      <Table.Cell key={column.id}>
+                        {column.render ? column.render(row) : column.value(row)}
+                      </Table.Cell>
+                    ))}
+                    {actions && (
+                      <Table.Cell className="table-actions">
+                        <div className="table-row-actions">{actions(row)}</div>
+                      </Table.Cell>
+                    )}
+                  </Table.Row>
+                ))
+              )}
+            </Table.Body>
+          </Table>
+        </div>
+      </LayerCard>
     </div>
   );
 }
