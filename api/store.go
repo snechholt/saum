@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/rand"
 	"database/sql"
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -19,6 +20,8 @@ type Project struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 }
+
+var ErrFactoryNotEmpty = errors.New("Factory still contains projects")
 
 type Store struct{ db *sql.DB }
 

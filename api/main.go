@@ -43,7 +43,9 @@ func problem(w http.ResponseWriter, status int, message string) {
 func (s *Store) handler(web http.Handler) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/factories", s.getFactories)
-	mux.HandleFunc("POST /api/factories", s.postFactory)
+	mux.HandleFunc("POST /api/factories", s.saveFactory)
+	mux.HandleFunc("PUT /api/factories/{factory}", s.saveFactory)
+	mux.HandleFunc("DELETE /api/factories/{factory}", s.removeFactory)
 	mux.HandleFunc("GET /api/factories/{factory}/projects", s.getProjects)
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) { problem(w, 404, "Not found") })
 	mux.Handle("/", web)
@@ -57,7 +59,7 @@ func (s *Store) getFactories(w http.ResponseWriter, r *http.Request) {
 	}
 	jsonResponse(w, 200, factories)
 }
-func (s *Store) postFactory(w http.ResponseWriter, r *http.Request) {
+func (s *Store) saveFactory(w http.ResponseWriter, r *http.Request) {
 	if strings.Split(r.Header.Get("Content-Type"), ";")[0] != "application/json" {
 		problem(w, 415, "Expected application/json")
 		return
@@ -77,13 +79,38 @@ func (s *Store) postFactory(w http.ResponseWriter, r *http.Request) {
 		problem(w, 400, err.Error())
 		return
 	}
-	factory, err := s.createFactory(name)
+	var factory Factory
+	status := http.StatusCreated
+	if r.Method == http.MethodPut {
+		factory, err = s.updateFactory(r.PathValue("factory"), name)
+		status = http.StatusOK
+	} else {
+		factory, err = s.createFactory(name)
+	}
+	if errors.Is(err, sql.ErrNoRows) {
+		problem(w, 404, "Factory not found")
+		return
+	}
 	if err != nil {
 		problem(w, 500, "Could not save factory")
 		return
 	}
-	jsonResponse(w, 201, factory)
+	jsonResponse(w, status, factory)
 }
+func (s *Store) removeFactory(w http.ResponseWriter, r *http.Request) {
+	err := s.deleteFactory(r.PathValue("factory"))
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		problem(w, 404, "Factory not found")
+	case errors.Is(err, ErrFactoryNotEmpty):
+		problem(w, 409, "Factory still contains projects")
+	case err != nil:
+		problem(w, 500, "Could not delete factory")
+	default:
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
 func (s *Store) getProjects(w http.ResponseWriter, r *http.Request) {
 	projects, err := s.listProjects(r.PathValue("factory"))
 	if errors.Is(err, sql.ErrNoRows) {
