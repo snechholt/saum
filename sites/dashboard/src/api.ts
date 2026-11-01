@@ -1,41 +1,50 @@
+export type Factory = { id: string; name: string };
 export type Project = { id: string; name: string };
 
-function parseProject(value: unknown): Project {
+type NamedItem = { id: string; name: string };
+function parseNamedItem(value: unknown): NamedItem {
   if (
     typeof value !== "object" ||
     value === null ||
     !("id" in value) ||
     typeof value.id !== "string" ||
+    !value.id ||
     !("name" in value) ||
-    typeof value.name !== "string"
+    typeof value.name !== "string" ||
+    !value.name
   ) {
-    throw new Error("The server returned an invalid project.");
+    throw new Error("The server returned an invalid response.");
   }
   return { id: value.id, name: value.name };
 }
-async function request(init?: RequestInit): Promise<unknown> {
-  const response = await fetch("/api/projects", init);
+async function request(path: string, init?: RequestInit): Promise<unknown> {
+  const response = await fetch(`/api/${path}`, init);
   const body: unknown = await response.json();
   if (!response.ok) {
     const message =
       typeof body === "object" && body !== null && "error" in body && typeof body.error === "string"
         ? body.error
-        : "Could not reach the factory.";
+        : "Request failed.";
     throw new Error(message);
   }
   return body;
 }
-export async function listProjects(): Promise<Project[]> {
-  const body = await request();
-  if (!Array.isArray(body)) throw new Error("The server returned an invalid project list.");
-  return body.map((value: unknown) => parseProject(value));
+function parseList(body: unknown): NamedItem[] {
+  if (!Array.isArray(body)) throw new Error("The server returned an invalid list.");
+  return body.map((value: unknown) => parseNamedItem(value));
 }
-export async function createProject(name: string): Promise<Project> {
-  return parseProject(
-    await request({
+export async function listFactories(): Promise<Factory[]> {
+  return parseList(await request("factories"));
+}
+export async function createFactory(name: string): Promise<Factory> {
+  return parseNamedItem(
+    await request("factories", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
     }),
   );
+}
+export async function listProjects(factoryID: Factory["id"]): Promise<Project[]> {
+  return parseList(await request(`factories/${encodeURIComponent(factoryID)}/projects`));
 }

@@ -47,6 +47,9 @@ button:disabled {
   letter-spacing: -1.3px;
 }
 .nav-item {
+  width: 100%;
+  border: 0;
+  text-align: left;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -88,20 +91,20 @@ h1 {
   color: #a0aaba;
   font-size: 12px;
 }
-.create-project {
+.create-form {
   margin-top: 22px;
   padding: 20px;
   border: 1px solid #e0e7f1;
   border-radius: 8px;
   max-width: 440px;
 }
-.create-project label {
+.create-form label {
   display: block;
   margin-bottom: 8px;
   color: #6e7e96;
   font-size: 11px;
 }
-.create-project input {
+.create-form input {
   border: 1px solid #dbe3ef;
   border-radius: 6px;
   background: #fff;
@@ -110,32 +113,46 @@ h1 {
   color: #526581;
   outline-offset: 3px;
 }
-.create-project > div {
+.create-form > div {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 13px;
 }
-.project-grid {
+.item-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
   gap: 16px;
   margin-top: 23px;
 }
-.project-card {
+.item-card {
+  display: block;
+  background: #fff;
+  text-align: left;
   border: 1px solid #e3e9f1;
   border-radius: 8px;
   padding: 22px;
 }
-.project-card > svg {
+.item-card > svg {
+  display: block;
   color: #849bbd;
   margin-bottom: 20px;
 }
-.project-card h2 {
+.item-card h3,
+.item-name {
   font-weight: 500;
   font-size: 13px;
   margin: 0;
   overflow-wrap: anywhere;
+}
+.factory-card:hover {
+  border-color: #b8c8df;
+  background: #fafcff;
+}
+.section-title {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 24px 0 0;
 }
 .error-message {
   display: flex;
@@ -148,14 +165,6 @@ h1 {
   background: #fffaf6;
   color: #a57c61;
   font-size: 11px;
-}
-.error-message button {
-  margin-left: auto;
-  padding: 3px;
-  display: flex;
-  border: 0;
-  color: inherit;
-  background: none;
 }
 @media (max-width: 700px) {
   .factory-layout {

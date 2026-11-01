@@ -1,8 +1,10 @@
 # Saum
 
-A **Factory** is Saum's top-level concept. A Factory contains Projects.
-For now, Projects are only names in a list; their behavior and internals have not
-been built. There are no agents, issues, or architecture workflows.
+A **Factory** is Saum's top-level concept. The dashboard lists Factories and lets
+you create one by name. Open a Factory to see its Projects.
+
+Project behavior and creation are not built yet. There are no agents, issues,
+or architecture workflows.
 
 ## Develop
 
@@ -16,7 +18,9 @@ bun dev
 Open **http://127.0.0.1:5173**. The same command starts the Go API on
 `127.0.0.1:8080`; Ctrl-C stops both.
 
-Projects are stored in SQLite at `.saum/factory.sqlite`, which is not committed.
+Factories and their Projects are stored in SQLite at `.saum/factory.sqlite`,
+which is not committed. Earlier unscoped Projects are imported once into a
+**Saum** Factory. Any original `.saum/projects.json` is left untouched.
 The Go driver is pure Go; no database service or C toolchain is required.
 
 ## Layout

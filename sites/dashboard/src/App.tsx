@@ -1,143 +1,106 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@cloudflare/kumo/components/button";
-import { Factory, FolderSimple, Plus, SquaresFour, X } from "@phosphor-icons/react";
-import { createProject, listProjects, type Project } from "./api";
+import { Factory as FactoryIcon, Plus, SquaresFour } from "@phosphor-icons/react";
+import { listFactories, type Factory } from "./api";
+import { NewFactoryForm } from "./NewFactoryForm";
+import { FactoryProjects } from "./FactoryProjects";
+
+type FactoryList =
+  | { status: "loading" }
+  | { status: "ready"; factories: Factory[] }
+  | { status: "failed" };
 
 export default function App() {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [list, setList] = useState<FactoryList>({ status: "loading" });
+  const [selected, setSelected] = useState<Factory | null>(null);
   const [creating, setCreating] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [name, setName] = useState("");
-  const [error, setError] = useState("");
-  const [loadFailed, setLoadFailed] = useState(false);
-  const focusName = useCallback((element: HTMLInputElement | null) => element?.focus(), []);
 
   useEffect(() => {
     let ignore = false;
-    listProjects()
-      .then((items) => {
-        if (!ignore) setProjects(items);
+    listFactories()
+      .then((factories) => {
+        if (!ignore) setList({ status: "ready", factories });
       })
       .catch(() => {
-        if (!ignore) {
-          setLoadFailed(true);
-          setError("Could not load projects. Reload to try again.");
-        }
-      })
-      .finally(() => {
-        if (!ignore) setLoading(false);
+        if (!ignore) setList({ status: "failed" });
       });
     return () => {
       ignore = true;
     };
   }, []);
 
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    if (!name.trim() || saving) return;
-    setSaving(true);
-    setError("");
-    try {
-      const project = await createProject(name);
-      setProjects((current) => [...current, project]);
-      setName("");
-      setCreating(false);
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not create project.");
-    } finally {
-      setSaving(false);
-    }
+  function factoryCreated(factory: Factory) {
+    setList((current) =>
+      current.status === "ready"
+        ? { status: "ready", factories: [...current.factories, factory] }
+        : current,
+    );
+    setCreating(false);
   }
 
   return (
     <div className="factory-layout">
       <aside className="sidebar" aria-label="Navigation">
         <div className="brand">
-          <Factory size={23} weight="bold" />
+          <FactoryIcon size={23} weight="bold" />
           <strong>saum</strong>
         </div>
-        <div className="nav-item" aria-current="page">
+        <button
+          className="nav-item"
+          aria-current={selected ? undefined : "page"}
+          onClick={() => setSelected(null)}
+        >
           <SquaresFour size={17} />
-          <span>Projects</span>
-          <small>{projects.length}</small>
-        </div>
+          <span>Factories</span>
+          {list.status === "ready" && <small>{list.factories.length}</small>}
+        </button>
       </aside>
       <main className="workspace">
-        <header className="page-title">
-          <h1>Projects</h1>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setCreating(true)}
-            disabled={loading || loadFailed || creating}
-          >
-            <Plus size={15} />
-            New project
-          </Button>
-        </header>
-        {error && (
-          <div className="error-message" role="alert">
-            {error}
-            <button onClick={() => setError("")} aria-label="Dismiss error">
-              <X size={14} />
-            </button>
-          </div>
-        )}
-        {creating && (
-          <form
-            className="create-project"
-            onSubmit={(event) => {
-              void submit(event);
-            }}
-          >
-            <label htmlFor="project-name">Name</label>
-            <input
-              id="project-name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              maxLength={80}
-              disabled={saving}
-              ref={focusName}
-            />
-            <div>
-              <Button
-                variant="ghost"
-                size="sm"
-                type="button"
-                onClick={() => {
-                  setCreating(false);
-                  setName("");
-                }}
-                disabled={saving}
-              >
-                Cancel
-              </Button>
+        {selected ? (
+          <FactoryProjects key={selected.id} factory={selected} />
+        ) : (
+          <>
+            <header className="page-title">
+              <h1>Factories</h1>
               <Button
                 variant="primary"
                 size="sm"
-                type="submit"
-                loading={saving}
-                disabled={!name.trim() || saving}
+                onClick={() => setCreating(true)}
+                disabled={list.status !== "ready" || creating}
               >
-                Create
+                <Plus size={15} />
+                New factory
               </Button>
-            </div>
-          </form>
-        )}
-        {loading ? (
-          <output className="empty-state">Loading…</output>
-        ) : loadFailed ? null : projects.length === 0 ? (
-          <p className="empty-state">No projects</p>
-        ) : (
-          <div className="project-grid">
-            {projects.map((project) => (
-              <article className="project-card" key={project.id}>
-                <FolderSimple size={22} weight="duotone" />
-                <h2>{project.name}</h2>
-              </article>
-            ))}
-          </div>
+            </header>
+            {creating && (
+              <NewFactoryForm onCreated={factoryCreated} onCancel={() => setCreating(false)} />
+            )}
+            {list.status === "loading" ? (
+              <output className="empty-state">Loading…</output>
+            ) : list.status === "failed" ? (
+              <p className="error-message" role="alert">
+                Could not load factories. Reload to try again.
+              </p>
+            ) : list.factories.length === 0 ? (
+              <p className="empty-state">No factories</p>
+            ) : (
+              <div className="item-grid">
+                {list.factories.map((factory) => (
+                  <button
+                    className="item-card factory-card"
+                    key={factory.id}
+                    onClick={() => {
+                      setCreating(false);
+                      setSelected(factory);
+                    }}
+                  >
+                    <FactoryIcon size={22} weight="duotone" />
+                    <span className="item-name">{factory.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>
