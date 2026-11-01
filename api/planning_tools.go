@@ -135,8 +135,9 @@ func (s *Store) mcpHandler() http.Handler {
 		if err != nil {
 			return nil
 		}
+		closedWorld := false
 		server := mcp.NewServer(&mcp.Implementation{Name: "saum", Version: "0.1.0"}, &mcp.ServerOptions{Instructions: "Use search to discover session-scoped Saum functions. Use execute to run synchronous JavaScript with the saum namespace; return a JSON value. There is no filesystem, network, import, or process API inside execute. Functions commit independently. Decompose the assigned story; do not implement it."})
-		mcp.AddTool(server, &mcp.Tool{Name: "search", Description: "Discover Saum functions, signatures, and examples by keywords. An empty query lists all functions."}, func(ctx context.Context, request *mcp.CallToolRequest, input struct {
+		mcp.AddTool(server, &mcp.Tool{Name: "search", Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: &closedWorld}, Description: "Discover Saum functions, signatures, and examples by keywords. An empty query lists all functions."}, func(ctx context.Context, request *mcp.CallToolRequest, input struct {
 			Query string `json:"query"`
 		}) (*mcp.CallToolResult, map[string]any, error) {
 			functions := searchFunctions(input.Query)
@@ -146,7 +147,7 @@ func (s *Store) mcpHandler() http.Handler {
 			}
 			return nil, map[string]any{"functions": functions}, nil
 		})
-		mcp.AddTool(server, &mcp.Tool{Name: "execute", Description: "Run synchronous JavaScript using the functions discovered with search. Example: return saum.submit_item({...});. No await/import/require. Return a JSON value. Each call commits independently; reuse keys for retries."}, func(ctx context.Context, request *mcp.CallToolRequest, input struct {
+		mcp.AddTool(server, &mcp.Tool{Name: "execute", Annotations: &mcp.ToolAnnotations{DestructiveHint: &closedWorld, OpenWorldHint: &closedWorld}, Description: "Run synchronous JavaScript using the functions discovered with search. Example: return saum.submit_item({...});. No await/import/require. Return a JSON value. Each call commits independently; reuse keys for retries."}, func(ctx context.Context, request *mcp.CallToolRequest, input struct {
 			Code string `json:"code"`
 		}) (*mcp.CallToolResult, map[string]any, error) {
 			result, err := s.executeCode(ctx, session.ID, input.Code)

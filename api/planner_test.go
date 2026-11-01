@@ -65,6 +65,10 @@ func TestCodexHelperProcess(t *testing.T) {
 	if mode == "" {
 		return
 	}
+	if !strings.Contains(strings.Join(os.Args, " "), `default_tools_approval_mode="approve"`) {
+		fmt.Fprintln(os.Stderr, "Saum tools need explicit scoped approval")
+		os.Exit(8)
+	}
 	if _, err := io.ReadAll(os.Stdin); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

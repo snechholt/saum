@@ -214,7 +214,7 @@ func (p *Planner) execute(parent context.Context, session Session) {
 		finish(SessionFailed, err)
 		return
 	}
-	config := fmt.Sprintf("mcp_servers.saum={url=%s,bearer_token_env_var=\"SAUM_SESSION_TOKEN\",required=true,default_tools_approval_mode=\"auto\"}", strconv.Quote(p.MCPURL))
+	config := fmt.Sprintf("mcp_servers.saum={url=%s,bearer_token_env_var=\"SAUM_SESSION_TOKEN\",required=true,default_tools_approval_mode=\"approve\"}", strconv.Quote(p.MCPURL))
 	args := []string{"exec", "--json", "--color", "never", "--ignore-user-config", "--ephemeral", "--sandbox", "workspace-write", "-c", "approval_policy=\"never\"", "-c", config, "-C", path, "-"}
 	cmd := exec.CommandContext(ctx, p.Codex, args...)
 	cmd.Dir = path
