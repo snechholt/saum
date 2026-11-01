@@ -21,6 +21,9 @@ func (p *Planner) sessionWorkspace(ctx context.Context, session Session, factory
 	if err != nil {
 		return "", err
 	}
+	if owned.Worktree == owned.Repository {
+		return "", fmt.Errorf("a goal cannot use the factory main checkout as its worktree")
+	}
 	if session.Kind == SummarySession {
 		return owned.Repository, nil
 	}

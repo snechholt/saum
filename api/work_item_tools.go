@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -10,8 +11,12 @@ func assignedItem(tx *sql.Tx, sessionID string, kind SessionKind) (WorkItem, err
 	var id string
 	var status SessionStatus
 	var actualKind SessionKind
-	if err := tx.QueryRow("SELECT work_item_id,status,kind FROM work_item_sessions JOIN sessions ON sessions.id=session_id WHERE session_id=?", sessionID).Scan(&id, &status, &actualKind); err != nil {
+	var thread string
+	if err := tx.QueryRow("SELECT work_item_id,status,kind,thread_id FROM work_item_sessions JOIN sessions ON sessions.id=session_id WHERE session_id=?", sessionID).Scan(&id, &status, &actualKind, &thread); err != nil {
 		return WorkItem{}, err
+	}
+	if thread == "" {
+		return WorkItem{}, fmt.Errorf("native thread identity is not established")
 	}
 	if status != SessionRunning || actualKind != kind {
 		return WorkItem{}, fmt.Errorf("function is not available in this session phase")
@@ -30,6 +35,7 @@ type CriterionInput struct {
 	CriterionIndex *int     `json:"criterionIndex"`
 	Summary        string   `json:"summary"`
 	Evidence       []string `json:"evidence"`
+	CheckIDs       []string `json:"checkIds"`
 }
 
 func (s *Store) submitAcceptanceCriterion(sessionID string, input CriterionInput) error {
@@ -44,10 +50,14 @@ func (s *Store) submitAcceptanceCriterion(sessionID string, input CriterionInput
 	if err != nil {
 		return err
 	}
-	if len(evidence) == 0 {
-		return fmt.Errorf("verification evidence is required")
-	}
 	data, _ := json.Marshal(evidence)
+	if len(input.CheckIDs) == 0 {
+		return fmt.Errorf("recorded check IDs are required; use saum.work_item.run_check and checks")
+	}
+	_, tree, err := s.sessionArtifact(context.Background(), sessionID)
+	if err != nil {
+		return err
+	}
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
@@ -62,35 +72,51 @@ func (s *Store) submitAcceptanceCriterion(sessionID string, input CriterionInput
 	}
 	index := *input.CriterionIndex
 	if index < 0 || index >= len(item.AcceptanceCriteria) {
-		return fmt.Errorf("criterionIndex is outside the assigned item's criteria")
+		return fmt.Errorf("criterionIndex is outside the assigned item")
 	}
-	var previousSummary, previousEvidence string
-	err = tx.QueryRow("SELECT summary,evidence FROM acceptance_submissions WHERE session_id=? AND criterion_index=?", sessionID, index).Scan(&previousSummary, &previousEvidence)
-	if err == nil {
-		if previousSummary != summary || previousEvidence != string(data) {
-			return fmt.Errorf("criterion was already submitted with different evidence")
-		}
-		return tx.Commit()
-	}
-	if err != sql.ErrNoRows {
+	if err := verifiedCheckIDs(tx, sessionID, tree, input.CheckIDs); err != nil {
 		return err
 	}
+	checks, _ := json.Marshal(input.CheckIDs)
 	var count int
 	if err := tx.QueryRow("SELECT count(*) FROM acceptance_submissions WHERE session_id=?", sessionID).Scan(&count); err != nil {
 		return err
 	}
-	if index != count {
+	if index > count {
 		return fmt.Errorf("submit criteria in order; next criterion is %d", count)
 	}
-	if _, err := tx.Exec("INSERT INTO acceptance_submissions (session_id,work_item_id,criterion_index,summary,evidence) VALUES (?,?,?,?,?)", sessionID, item.ID, index, summary, string(data)); err != nil {
+	var previousSummary, previousEvidence, previousChecks string
+	var previousTree ArtifactTree
+	err = tx.QueryRow("SELECT summary,evidence,artifact_tree,check_ids FROM acceptance_submissions WHERE session_id=? AND criterion_index=?", sessionID, index).Scan(&previousSummary, &previousEvidence, &previousTree, &previousChecks)
+	if err != nil && err != sql.ErrNoRows {
 		return err
 	}
-	if err := toolJournal(tx, sessionID, "saum.work_item.submit_acceptance_criteria", input, map[string]bool{"submitted": true}); err != nil {
+	if err == nil && previousSummary == summary && previousEvidence == string(data) && previousTree == tree && previousChecks == string(checks) {
+		return tx.Commit()
+	}
+	if _, err := tx.Exec("INSERT INTO acceptance_history(session_id,work_item_id,criterion_index,summary,evidence,artifact_tree,check_ids) VALUES (?,?,?,?,?,?,?)", sessionID, item.ID, index, summary, string(data), tree, string(checks)); err != nil {
+		return err
+	}
+	if _, err := tx.Exec("INSERT INTO acceptance_submissions(session_id,work_item_id,criterion_index,summary,evidence,artifact_tree,check_ids) VALUES (?,?,?,?,?,?,?) ON CONFLICT(session_id,criterion_index) DO UPDATE SET summary=excluded.summary,evidence=excluded.evidence,artifact_tree=excluded.artifact_tree,check_ids=excluded.check_ids", sessionID, item.ID, index, summary, string(data), tree, string(checks)); err != nil {
+		return err
+	}
+	if err := toolJournal(tx, sessionID, "saum.work_item.submit_acceptance_criteria", input, map[string]any{"submitted": true, "artifactTree": tree}); err != nil {
 		return err
 	}
 	return tx.Commit()
 }
 func (s *Store) requestWorkItemReview(sessionID string) error {
+	owned, tree, err := s.sessionArtifact(context.Background(), sessionID)
+	if err != nil {
+		return err
+	}
+	session, err := s.session(sessionID)
+	if err != nil {
+		return err
+	}
+	if err := s.initializeGoalBase(context.Background(), session, owned); err != nil {
+		return err
+	}
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
@@ -101,22 +127,73 @@ func (s *Store) requestWorkItemReview(sessionID string) error {
 		return err
 	}
 	if item.Status == "review_requested" {
+		var sealed ArtifactTree
+		if err := tx.QueryRow("SELECT review_tree FROM work_items WHERE id=?", item.ID).Scan(&sealed); err != nil {
+			return err
+		}
+		if sealed != tree {
+			return fmt.Errorf("source changed after requesting review")
+		}
 		return tx.Commit()
 	}
 	if item.Status != "working" {
-		return fmt.Errorf("work item is not accepting review requests")
+		return fmt.Errorf("item is not accepting review requests")
 	}
-	var count int
-	if err := tx.QueryRow("SELECT count(*) FROM acceptance_submissions WHERE session_id=?", sessionID).Scan(&count); err != nil {
+	var pending int
+	if err := tx.QueryRow("SELECT count(*) FROM verification_checks WHERE session_id=? AND status IN ('queued','running')", sessionID).Scan(&pending); err != nil {
 		return err
 	}
-	if count != len(item.AcceptanceCriteria) || count == 0 {
+	if pending > 0 {
+		return fmt.Errorf("wait for pending checks before requesting review")
+	}
+	rows, err := tx.Query("SELECT criterion_index,artifact_tree,check_ids FROM acceptance_submissions WHERE session_id=? ORDER BY criterion_index", sessionID)
+	if err != nil {
+		return err
+	}
+	type receipt struct {
+		index  int
+		tree   ArtifactTree
+		checks []string
+	}
+	receipts := []receipt{}
+	for rows.Next() {
+		var r receipt
+		var ids string
+		if err := rows.Scan(&r.index, &r.tree, &ids); err != nil {
+			_ = rows.Close()
+			return err
+		}
+		if err := json.Unmarshal([]byte(ids), &r.checks); err != nil {
+			_ = rows.Close()
+			return err
+		}
+		receipts = append(receipts, r)
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return err
+	}
+	if err := rows.Close(); err != nil {
+		return err
+	}
+	if len(receipts) != len(item.AcceptanceCriteria) || len(receipts) == 0 {
 		return fmt.Errorf("submit evidence for every acceptance criterion before requesting review")
 	}
-	if _, err := tx.Exec("UPDATE work_items SET status='review_requested' WHERE id=?", item.ID); err != nil {
+	for index, r := range receipts {
+		if r.index != index || r.tree != tree {
+			return fmt.Errorf("criterion %d needs reverification against the current source", index)
+		}
+		if err := verifiedCheckIDs(tx, sessionID, tree, r.checks); err != nil {
+			return err
+		}
+	}
+	if err := requiredChecksPassed(tx, item.PlanSessionID, sessionID, tree); err != nil {
 		return err
 	}
-	if err := toolJournal(tx, sessionID, "saum.work_item.request_review", map[string]any{}, map[string]bool{"requested": true}); err != nil {
+	if _, err := tx.Exec("UPDATE work_items SET status='review_requested',review_tree=? WHERE id=?", tree, item.ID); err != nil {
+		return err
+	}
+	if err := toolJournal(tx, sessionID, "saum.work_item.request_review", map[string]any{}, map[string]any{"requested": true, "artifactTree": tree}); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -154,6 +231,10 @@ type ExecutiveSummaryInput struct {
 }
 
 func (s *Store) submitExecutiveSummary(sessionID string, input ExecutiveSummaryInput) error {
+	_, tree, err := s.sessionArtifact(context.Background(), sessionID)
+	if err != nil {
+		return err
+	}
 	summary, err := progressSummary(input.Summary)
 	if err != nil {
 		return err
@@ -179,6 +260,13 @@ func (s *Store) submitExecutiveSummary(sessionID string, input ExecutiveSummaryI
 	if item.Status != "summarizing" {
 		return fmt.Errorf("item is not awaiting a factory-agent summary")
 	}
+	var sealed ArtifactTree
+	if err := tx.QueryRow("SELECT review_tree FROM work_items WHERE id=?", item.ID).Scan(&sealed); err != nil {
+		return err
+	}
+	if sealed == "" || sealed != tree {
+		return fmt.Errorf("source changed since the review request; return to the goal agent for verification")
+	}
 	var previousSummary, previousVerification, previousRisks string
 	err = tx.QueryRow("SELECT summary,verification,risks FROM work_item_reviews WHERE summary_session_id=?", sessionID).Scan(&previousSummary, &previousVerification, &previousRisks)
 	if err == nil {
@@ -190,7 +278,7 @@ func (s *Store) submitExecutiveSummary(sessionID string, input ExecutiveSummaryI
 	if err != sql.ErrNoRows {
 		return err
 	}
-	if _, err := tx.Exec("INSERT INTO work_item_reviews(id,work_item_id,goal_session_id,summary_session_id,summary,verification,risks) VALUES(lower(hex(randomblob(16))),?,?,?,?,?,?)", item.ID, item.LastGoalSessionID, sessionID, summary, verification, string(risksJSON)); err != nil {
+	if _, err := tx.Exec("INSERT INTO work_item_reviews(id,work_item_id,goal_session_id,summary_session_id,summary,verification,risks,artifact_tree) VALUES(lower(hex(randomblob(16))),?,?,?,?,?,?,?)", item.ID, item.LastGoalSessionID, sessionID, summary, verification, string(risksJSON), tree); err != nil {
 		return err
 	}
 	if err := toolJournal(tx, sessionID, "saum.work_item.submit_executive_summary", input, map[string]bool{"submitted": true}); err != nil {

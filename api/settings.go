@@ -22,7 +22,7 @@ func migrateSettings(db *sql.DB, dataDir string) error {
 	if err := db.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
 		return err
 	}
-	if version == 8 {
+	if version >= 8 {
 		return nil
 	}
 	root, err := filepath.Abs(filepath.Join(dataDir, "factories"))

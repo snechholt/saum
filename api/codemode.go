@@ -20,8 +20,9 @@ type FunctionInfo struct {
 }
 
 var saumFunctions = []FunctionInfo{
-
-	{Kind: ImplementationSession, Name: "saum.work_item.submit_acceptance_criteria", Description: "Submit verification evidence for ONE acceptance criterion of the assigned work item, in criterion order. This is not human approval.", Signature: "saum.work_item.submit_acceptance_criteria({criterionIndex:number,summary:string,evidence:string[]}): {submitted:boolean}", Example: `return saum.work_item.submit_acceptance_criteria({criterionIndex:0,summary:"Valid login works",evidence:["bun test auth: 4 tests passed"]});`},
+	{Kind: ImplementationSession, Name: "saum.work_item.run_check", Description: "Queue a verification command in a separate snapshot checkout with normal host permissions, networking, and caches. Poll checks() for its recorded result; no model call is made.", Signature: "saum.work_item.run_check({command:string[]}): {id,status}", Example: `return saum.work_item.run_check({command:["go","test","./..."]});`},
+	{Kind: ImplementationSession, Name: "saum.work_item.checks", Description: "Get recorded checks and requiredCommands from earlier approved items. Rerun those regressions against the current source before requesting review.", Signature: "saum.work_item.checks(): {checks:Check[],requiredCommands:string[][]}", Example: "return saum.work_item.checks();"},
+	{Kind: ImplementationSession, Name: "saum.work_item.submit_acceptance_criteria", Description: "Submit verification evidence for ONE acceptance criterion of the assigned work item, in criterion order. This is not human approval.", Signature: "saum.work_item.submit_acceptance_criteria({criterionIndex:number,summary:string,evidence:string[],checkIds:string[]}): {submitted:boolean}", Example: `return saum.work_item.submit_acceptance_criteria({criterionIndex:0,summary:"Valid login works",evidence:["Recorded auth check passed"],checkIds:["id-from-run_check"]});`},
 	{Kind: ImplementationSession, Name: "saum.work_item.request_review", Description: "Request a factory-agent executive summary after every criterion has evidence. Then stop. Only human approval of that summary unlocks the next item.", Signature: "saum.work_item.request_review(): {requested:boolean}", Example: "return saum.work_item.request_review();"},
 	{Kind: ImplementationSession, Name: "saum.work_item.report_blocker", Description: "Report the exact missing decision or dependency blocking this assigned item, then stop.", Signature: "saum.work_item.report_blocker({reason:string}): {blocked:boolean}", Example: `return saum.work_item.report_blocker({reason:"Which verified recovery channel should be used?"});`},
 	{Kind: SummarySession, Name: "saum.work_item.submit_executive_summary", Description: "The factory main agent submits a human-readable executive summary, verification assessment, and risks for the assigned work item. Does not approve it.", Signature: "saum.work_item.submit_executive_summary({summary:string,verification:string,risks:string[]}): {submitted:boolean}", Example: `return saum.work_item.submit_executive_summary({summary:"Users can sign in securely.",verification:"Observed 4 passing auth tests in the goal transcript.",risks:["Recovery is a later item."]});`},
@@ -153,6 +154,14 @@ func (s *Store) runCode(parent context.Context, sessionID, code string) (any, er
 		call func([]byte) (any, error)
 	}{
 
+		{"work_item.run_check", func(data []byte) (any, error) {
+			var input CheckRequest
+			if err := decode(data, &input); err != nil {
+				return nil, err
+			}
+			return s.requestVerification(sessionID, input)
+		}},
+		{"work_item.checks", func(data []byte) (any, error) { return s.checkReport(sessionID) }},
 		{"work_item.submit_acceptance_criteria", func(data []byte) (any, error) {
 			var input CriterionInput
 			if err := decode(data, &input); err != nil {

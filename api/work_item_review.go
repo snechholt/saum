@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -8,7 +9,7 @@ import (
 )
 
 func (s *Store) workItemReviews(itemID string) ([]ExecutiveReview, error) {
-	rows, err := s.db.Query("SELECT id,work_item_id,goal_session_id,summary_session_id,summary,verification,risks,decision,feedback,created_at,reviewed_at FROM work_item_reviews WHERE work_item_id=? ORDER BY rowid", itemID)
+	rows, err := s.db.Query("SELECT id,work_item_id,goal_session_id,summary_session_id,summary,verification,risks,decision,feedback,created_at,reviewed_at,artifact_tree,approved_commit FROM work_item_reviews WHERE work_item_id=? ORDER BY rowid", itemID)
 	if err != nil {
 		return nil, err
 	}
@@ -17,7 +18,7 @@ func (s *Store) workItemReviews(itemID string) ([]ExecutiveReview, error) {
 	for rows.Next() {
 		var review ExecutiveReview
 		var risks string
-		if err := rows.Scan(&review.ID, &review.WorkItemID, &review.GoalSessionID, &review.SummarySessionID, &review.Summary, &review.Verification, &risks, &review.Decision, &review.Feedback, &review.CreatedAt, &review.ReviewedAt); err != nil {
+		if err := rows.Scan(&review.ID, &review.WorkItemID, &review.GoalSessionID, &review.SummarySessionID, &review.Summary, &review.Verification, &risks, &review.Decision, &review.Feedback, &review.CreatedAt, &review.ReviewedAt, &review.ArtifactTree, &review.ApprovedCommit); err != nil {
 			return nil, err
 		}
 		if err := json.Unmarshal([]byte(risks), &review.Risks); err != nil {
@@ -44,27 +45,50 @@ func (s *Store) decideWorkItem(itemID string, input WorkItemDecision, approve bo
 	} else if compact(input.Feedback) != "" {
 		return nil, fmt.Errorf("send feedback instead of approving with feedback")
 	}
+	var owned OwnedWorkspace
+	var currentTree ArtifactTree
+	if approve {
+		var summaryID string
+		if err := s.db.QueryRow("SELECT summary_session_id FROM work_item_reviews WHERE id=? AND work_item_id=?", input.ReviewID, itemID).Scan(&summaryID); err != nil {
+			return nil, err
+		}
+		owned, currentTree, err = s.sessionArtifact(context.Background(), summaryID)
+		if err != nil {
+			return nil, err
+		}
+	}
 	tx, err := s.db.Begin()
 	if err != nil {
 		return nil, err
 	}
 	defer tx.Rollback()
 	var state, planID, latestReview, summarySessionID string
+	var reviewedTree ArtifactTree
 	var decision ReviewStatus
 	var sessionState SessionStatus
-	if err := tx.QueryRow(`SELECT work.status,work.plan_session_id,review.id,review.decision,review.summary_session_id,run.status FROM work_items AS work
+	if err := tx.QueryRow(`SELECT work.status,work.plan_session_id,review.id,review.decision,review.summary_session_id,run.status,review.artifact_tree FROM work_items AS work
  JOIN work_item_reviews AS review ON review.id=(SELECT id FROM work_item_reviews WHERE work_item_id=work.id ORDER BY rowid DESC LIMIT 1)
- JOIN sessions AS run ON run.id=review.summary_session_id WHERE work.id=?`, itemID).Scan(&state, &planID, &latestReview, &decision, &summarySessionID, &sessionState); err != nil {
+ JOIN sessions AS run ON run.id=review.summary_session_id WHERE work.id=?`, itemID).Scan(&state, &planID, &latestReview, &decision, &summarySessionID, &sessionState, &reviewedTree); err != nil {
 		return nil, err
 	}
 	if state != "awaiting_review" || latestReview != input.ReviewID || decision != ReviewPending || sessionState != SessionCompleted {
 		return nil, fmt.Errorf("executive summary is no longer available for review")
 	}
+	commit := ""
+	if approve {
+		if reviewedTree == "" || reviewedTree != currentTree {
+			return nil, fmt.Errorf("source changed or this legacy review has no verified snapshot; send feedback to reverify before approval")
+		}
+		commit, err = approvedCommit(context.Background(), owned, reviewedTree, latestReview)
+		if err != nil {
+			return nil, err
+		}
+	}
 	nextDecision := ReviewChangesRequested
 	if approve {
 		nextDecision = ReviewApproved
 	}
-	if _, err := tx.Exec("UPDATE work_item_reviews SET decision=?,feedback=?,reviewed_at=? WHERE id=?", nextDecision, feedback, time.Now().UTC().Format(time.RFC3339Nano), latestReview); err != nil {
+	if _, err := tx.Exec("UPDATE work_item_reviews SET decision=?,feedback=?,reviewed_at=?,approved_commit=? WHERE id=?", nextDecision, feedback, time.Now().UTC().Format(time.RFC3339Nano), commit, latestReview); err != nil {
 		return nil, err
 	}
 	var next *Session
@@ -92,6 +116,10 @@ func (s *Store) decideWorkItem(itemID string, input WorkItemDecision, approve bo
 				return nil, err
 			}
 			next = &session
+		} else {
+			if err := queueIntegration(tx, planID, latestReview, commit); err != nil {
+				return nil, err
+			}
 		}
 	}
 	if err := tx.Commit(); err != nil {

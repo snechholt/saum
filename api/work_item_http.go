@@ -31,6 +31,36 @@ func (s *Store) replyWorkItemHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	jsonResponse(w, 202, session)
 }
+func (s *Store) reworkIntegrationHTTP(w http.ResponseWriter, r *http.Request) {
+	if strings.Split(r.Header.Get("Content-Type"), ";")[0] != "application/json" {
+		problem(w, 415, "Expected application/json")
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 40000)
+	var input struct {
+		Feedback string `json:"feedback"`
+	}
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if decoder.Decode(&input) != nil || decoder.Decode(new(any)) != io.EOF {
+		problem(w, 400, "Invalid rework request")
+		return
+	}
+	next, err := s.reworkIntegration(r.PathValue("item"), input.Feedback)
+	if err != nil {
+		problem(w, 409, err.Error())
+		return
+	}
+	jsonResponse(w, 202, next)
+}
+func (s *Store) verificationHTTP(w http.ResponseWriter, r *http.Request) {
+	checks, err := s.verificationChecks(r.PathValue("session"))
+	if err != nil {
+		problem(w, 500, "Could not load verification checks")
+		return
+	}
+	jsonResponse(w, 200, checks)
+}
 func (s *Store) workItemDecisionHTTP(approve bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if strings.Split(r.Header.Get("Content-Type"), ";")[0] != "application/json" {

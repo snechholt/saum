@@ -54,6 +54,8 @@ func (s *Store) handler(web http.Handler) http.Handler {
 	mux.HandleFunc("POST /api/factories/{factory}/stories", s.postStory)
 	mux.Handle("/mcp", s.mcpHandler())
 	mux.HandleFunc("GET /api/sessions/{session}", s.getSession)
+	mux.HandleFunc("GET /api/sessions/{session}/checks", s.verificationHTTP)
+	mux.HandleFunc("POST /api/work-items/{item}/rework", s.reworkIntegrationHTTP)
 	mux.HandleFunc("POST /api/sessions/{session}/comments", s.postPlanComment)
 	mux.HandleFunc("DELETE /api/sessions/{session}/comments/{comment}", s.deletePlanComment)
 	mux.HandleFunc("POST /api/sessions/{session}/approve", s.postPlanApproval)

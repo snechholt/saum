@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"database/sql"
 	"encoding/json"
@@ -24,9 +25,11 @@ type WorkItem struct {
 	Replies           []string               `json:"replies"`
 }
 type AcceptanceSubmission struct {
-	CriterionIndex int      `json:"criterionIndex"`
-	Summary        string   `json:"summary"`
-	Evidence       []string `json:"evidence"`
+	CriterionIndex int          `json:"criterionIndex"`
+	Summary        string       `json:"summary"`
+	Evidence       []string     `json:"evidence"`
+	ArtifactTree   ArtifactTree `json:"artifactTree"`
+	CheckIDs       []string     `json:"checkIds"`
 }
 type ExecutiveReview struct {
 	ID               string       `json:"id"`
@@ -40,10 +43,13 @@ type ExecutiveReview struct {
 	Feedback         string       `json:"feedback"`
 	CreatedAt        string       `json:"createdAt"`
 	ReviewedAt       string       `json:"reviewedAt"`
+	ArtifactTree     ArtifactTree `json:"artifactTree"`
+	ApprovedCommit   string       `json:"approvedCommit"`
 }
 type GoalWorkflow struct {
-	PlanSessionID string     `json:"planSessionId"`
-	Items         []WorkItem `json:"items"`
+	PlanSessionID string       `json:"planSessionId"`
+	Items         []WorkItem   `json:"items"`
+	Integration   *Integration `json:"integration"`
 }
 
 const workItemColumns = `item.id,item.session_id,item.item_key,item.title,item.description,item.acceptance_criteria,work.plan_session_id,work.position,work.status,work.blocker,COALESCE(work.current_session_id,''),COALESCE(work.last_goal_session_id,'')`
@@ -65,18 +71,22 @@ func (s *Store) workItem(id string) (WorkItem, error) {
 	if err != nil {
 		return item, err
 	}
-	rows, err := s.db.Query("SELECT criterion_index,summary,evidence FROM acceptance_submissions WHERE work_item_id=? AND session_id=? ORDER BY criterion_index", id, item.LastGoalSessionID)
+	rows, err := s.db.Query("SELECT criterion_index,summary,evidence,artifact_tree,check_ids FROM acceptance_submissions WHERE work_item_id=? AND session_id=? ORDER BY criterion_index", id, item.LastGoalSessionID)
 	if err != nil {
 		return item, err
 	}
 	for rows.Next() {
 		var submission AcceptanceSubmission
-		var evidence string
-		if err := rows.Scan(&submission.CriterionIndex, &submission.Summary, &evidence); err != nil {
+		var evidence, ids string
+		if err := rows.Scan(&submission.CriterionIndex, &submission.Summary, &evidence, &submission.ArtifactTree, &ids); err != nil {
 			_ = rows.Close()
 			return item, err
 		}
 		if err := json.Unmarshal([]byte(evidence), &submission.Evidence); err != nil {
+			_ = rows.Close()
+			return item, err
+		}
+		if err := json.Unmarshal([]byte(ids), &submission.CheckIDs); err != nil {
 			_ = rows.Close()
 			return item, err
 		}
@@ -135,7 +145,8 @@ func (s *Store) workflow(planID string) (*GoalWorkflow, error) {
 		}
 		result.Items = append(result.Items, item)
 	}
-	return result, nil
+	result.Integration, err = s.goalIntegration(planID)
+	return result, err
 }
 func queueWorkItemSession(tx *sql.Tx, itemID string, kind SessionKind) (Session, error) {
 	var planID, storyID string
@@ -189,6 +200,9 @@ func queueFirstWorkItem(tx *sql.Tx, planID string) (Session, error) {
 	return queueWorkItemSession(tx, id, ImplementationSession)
 }
 func (s *Store) queueApprovedPlans() error {
+	if err := s.processIntegrations(); err != nil {
+		return err
+	}
 	rows, err := s.db.Query(`SELECT id FROM sessions AS plan WHERE kind='planning' AND review_status='approved'
  AND NOT EXISTS(SELECT 1 FROM goal_workflows WHERE plan_session_id=plan.id)
  AND NOT EXISTS(SELECT 1 FROM sessions WHERE story_id=plan.story_id AND status IN ('queued','preparing','running'))`)
@@ -252,6 +266,21 @@ func (s *Store) latestImplementation(planID string) (Session, error) {
 	return scanSession(s.db.QueryRow("SELECT "+sessionColumns+" FROM sessions WHERE parent_session_id=? AND kind IN ('implementation','summary') ORDER BY rowid DESC LIMIT 1", planID))
 }
 func (s *Store) retryImplementation(storyID string) (Session, error) {
+	var previousID string
+	var previousKind SessionKind
+	var sealed ArtifactTree
+	err := s.db.QueryRow("SELECT COALESCE(work.current_session_id,''),COALESCE(run.kind,'implementation'),work.review_tree FROM work_items AS work JOIN sessions AS plan ON plan.id=work.plan_session_id LEFT JOIN sessions AS run ON run.id=work.current_session_id WHERE plan.story_id=? AND work.status<>'approved' ORDER BY work.position LIMIT 1", storyID).Scan(&previousID, &previousKind, &sealed)
+	if err != nil {
+		return Session{}, err
+	}
+	summaryCurrent := false
+	if previousKind == SummarySession && sealed != "" {
+		_, tree, err := s.sessionArtifact(context.Background(), previousID)
+		if err != nil {
+			return Session{}, err
+		}
+		summaryCurrent = tree == sealed
+	}
 	tx, err := s.db.Begin()
 	if err != nil {
 		return Session{}, err
@@ -268,7 +297,7 @@ func (s *Store) retryImplementation(storyID string) (Session, error) {
 	var currentKind SessionKind
 	_ = tx.QueryRow("SELECT kind FROM sessions WHERE id=(SELECT current_session_id FROM work_items WHERE id=?)", itemID).Scan(&currentKind)
 	kind := ImplementationSession
-	if currentKind == SummarySession {
+	if currentKind == SummarySession && summaryCurrent {
 		kind = SummarySession
 	}
 	session, err := queueWorkItemSession(tx, itemID, kind)

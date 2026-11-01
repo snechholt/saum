@@ -57,6 +57,10 @@ func openStore(file string) (*Store, error) {
 		_ = db.Close()
 		return nil, err
 	}
+	if err := migrateReviewSafety(db); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
 	return &Store{db: db}, nil
 }
 func (s *Store) listFactories() ([]Factory, error) {
@@ -107,7 +111,7 @@ func (s *Store) listStories(factoryID string) ([]UserStory, error) {
  WHEN EXISTS(SELECT 1 FROM work_items JOIN sessions AS plan ON plan.id=work_items.plan_session_id WHERE plan.story_id=user_stories.id AND work_items.status='failed') THEN 'failed'
  WHEN EXISTS(SELECT 1 FROM work_items JOIN sessions AS plan ON plan.id=work_items.plan_session_id WHERE plan.story_id=user_stories.id AND work_items.status='awaiting_review') THEN 'awaiting_review'
  WHEN EXISTS(SELECT 1 FROM work_items JOIN sessions AS plan ON plan.id=work_items.plan_session_id WHERE plan.story_id=user_stories.id AND work_items.status<>'approved') THEN 'working'
- ELSE 'completed' END
+ ELSE COALESCE((SELECT CASE integration.status WHEN 'completed' THEN 'completed' WHEN 'failed' THEN 'integration_failed' ELSE 'integrating' END FROM integrations AS integration JOIN sessions AS plan ON plan.id=integration.plan_session_id WHERE plan.story_id=user_stories.id ORDER BY integration.rowid DESC LIMIT 1),'needs_integration') END
  FROM user_stories WHERE factory_id = ? ORDER BY rowid`, factoryID)
 	if err != nil {
 		return nil, err

@@ -99,6 +99,9 @@ func TestNativeCodexGoalAndFactoryThreads(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	if err := store.queueApprovedPlans(); err != nil {
+		t.Fatal(err)
+	}
 	stories, err := store.listStories(factory.ID)
 	if err != nil || len(stories) != 1 || stories[0].ID != story.ID || stories[0].GoalStatus != "completed" {
 		t.Fatal(stories, err)

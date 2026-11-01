@@ -1,10 +1,6 @@
-//go:build feynman_review
-
 package main
 
-// Opt-in contract probes for architecture/feynman-spec.md. The contract tests
-// intentionally fail on the reviewed implementation; observations document gaps
-// without pretending those gaps are an already-agreed product policy.
+// Regression tests for the contract failures found in architecture/feynman-spec.md.
 
 import (
 	"context"
@@ -35,6 +31,10 @@ func feynmanGoal(t *testing.T, s *Store, plan Session) Session {
 	if err := s.startSession(run.ID, plan.Worktree, "assigned item", "probe-token"); err != nil {
 		t.Fatal(err)
 	}
+	if err := s.saveSessionThread(run, "goal-thread"); err != nil {
+		t.Fatal(err)
+	}
+	run, _ = s.session(run.ID)
 	return run
 }
 
@@ -61,12 +61,17 @@ func TestFeynmanCriterionEvidenceMustBeCorrectable(t *testing.T) {
 	plan, _ := submittedPlan(t, s)
 	goal := feynmanGoal(t, s, plan)
 	index := 0
-	if err := s.submitAcceptanceCriterion(goal.ID, CriterionInput{CriterionIndex: &index, Summary: "Initial check", Evidence: []string{"initial command: pass"}}); err != nil {
+	check := successfulCheck(t, s, goal, []string{"/usr/bin/true"})
+	if err := s.submitAcceptanceCriterion(goal.ID, CriterionInput{CriterionIndex: &index, Summary: "Initial check", Evidence: []string{"initial command: pass"}, CheckIDs: []string{check.ID}}); err != nil {
 		t.Fatal(err)
 	}
-	err := s.submitAcceptanceCriterion(goal.ID, CriterionInput{CriterionIndex: &index, Summary: "Reverified after a correction", Evidence: []string{"expanded regression command: pass"}})
+	err := s.submitAcceptanceCriterion(goal.ID, CriterionInput{CriterionIndex: &index, Summary: "Reverified after a correction", Evidence: []string{"expanded regression command: pass"}, CheckIDs: []string{check.ID}})
 	if err != nil {
-		t.Fatalf("cannot supersede earlier evidence after correcting the implementation: %v", err)
+		t.Fatalf("cannot supersede earlier evidence: %v", err)
+	}
+	var versions int
+	if err := s.db.QueryRow("SELECT count(*) FROM acceptance_history WHERE session_id=? AND criterion_index=0", goal.ID).Scan(&versions); err != nil || versions != 2 {
+		t.Fatal("evidence history was overwritten", versions, err)
 	}
 }
 
@@ -188,22 +193,21 @@ func TestFeynmanCodexHelperProcess(t *testing.T) {
 	os.Exit(0)
 }
 
-func TestFeynmanObservationNarrativeIsNotProof(t *testing.T) {
+func TestFeynmanNarrativeCannotReplaceRecordedChecks(t *testing.T) {
 	s := testStore(t)
 	plan, _ := submittedPlan(t, s)
 	goal := feynmanGoal(t, s, plan)
 	for index := range 2 {
-		if err := s.submitAcceptanceCriterion(goal.ID, CriterionInput{CriterionIndex: &index, Summary: "Trust me", Evidence: []string{"I say it passed"}}); err != nil {
-			t.Fatal(err)
+		if err := s.submitAcceptanceCriterion(goal.ID, CriterionInput{CriterionIndex: &index, Summary: "Trust me", Evidence: []string{"I say it passed"}}); err == nil {
+			t.Fatal("narrative accepted without observed checks")
 		}
 	}
-	if err := s.requestWorkItemReview(goal.ID); err != nil {
-		t.Fatal(err)
+	if err := s.requestWorkItemReview(goal.ID); err == nil {
+		t.Fatal("unverified item reached review")
 	}
-	t.Log("ASSURANCE GAP: an empty implementation with no executed checks can reach review using only free-form claims; human approval is still required")
 }
 
-func TestFeynmanObservationAcceptedWorkIsNotIntegrated(t *testing.T) {
+func TestFeynmanAcceptedWorkBecomesNextBaseline(t *testing.T) {
 	s := testStore(t)
 	plan, _ := submittedPlan(t, s)
 	goal := feynmanGoal(t, s, plan)
@@ -223,6 +227,9 @@ func TestFeynmanObservationAcceptedWorkIsNotIntegrated(t *testing.T) {
 	if _, err := s.decideWorkItem(item.ID, WorkItemDecision{ReviewID: item.Reviews[0].ID}, true); err != nil {
 		t.Fatal(err)
 	}
+	if err := s.processIntegrations(); err != nil {
+		t.Fatal(err)
+	}
 	factoryID, _, _, _ := s.storyContext(plan.StoryID)
 	stories, err := s.listStories(factoryID)
 	if err != nil || stories[0].GoalStatus != "completed" {
@@ -233,8 +240,7 @@ func TestFeynmanObservationAcceptedWorkIsNotIntegrated(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(next, "delivered.txt")); !os.IsNotExist(err) {
-		t.Fatalf("integration behavior changed; revisit this observation: %v", err)
+	if _, err := os.Stat(filepath.Join(next, "delivered.txt")); err != nil {
+		t.Fatalf("accepted work missing from next goal: %v", err)
 	}
-	t.Log("DELIVERY GAP: goal is completed, but a new goal created from main cannot see the approved committed file")
 }

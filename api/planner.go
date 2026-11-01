@@ -72,6 +72,9 @@ func (p *Planner) Cancel(id string) bool {
 	return false
 }
 func (p *Planner) recoverSessions() error {
+	if err := p.Store.recoverVerificationChecks(); err != nil {
+		return err
+	}
 	rows, err := p.Store.db.Query("SELECT id,process_id,process_identity FROM sessions WHERE status IN ('preparing','running')")
 	if err != nil {
 		return err
@@ -232,6 +235,17 @@ func (p *Planner) execute(parent context.Context, session Session) {
 		finish(SessionFailed, err)
 		return
 	}
+	if session.Kind == ImplementationSession {
+		owned, err := p.Store.ownedWorkspace(ctx, factoryID, path)
+		if err != nil {
+			finish(SessionFailed, err)
+			return
+		}
+		if err := p.Store.initializeGoalBase(ctx, session, owned); err != nil {
+			finish(SessionFailed, err)
+			return
+		}
+	}
 	prompt := planningPrompt(title, goal)
 	if session.FeedbackBatchID != "" {
 		prompt, err = p.Store.revisionPrompt(session, title, goal)
@@ -255,6 +269,12 @@ func (p *Planner) execute(parent context.Context, session Session) {
 	if err = p.Store.appendEvent(session.ID, "input", []byte(prompt)); err != nil {
 		finish(SessionFailed, err)
 		return
+	}
+	if session.Kind == ImplementationSession {
+		checkCtx, stopChecks := context.WithCancel(ctx)
+		done := make(chan struct{})
+		go func() { defer close(done); p.Store.runVerificationChecks(checkCtx, session) }()
+		defer func() { stopChecks(); <-done }()
 	}
 	config := fmt.Sprintf("mcp_servers.saum={url=%s,bearer_token_env_var=\"SAUM_SESSION_TOKEN\",required=true,default_tools_approval_mode=\"approve\"}", strconv.Quote(p.MCPURL))
 	args := []string{"exec", "--json", "--color", "never", "--ignore-user-config", "--ephemeral", "--dangerously-bypass-approvals-and-sandbox", "-c", config, "-C", ".", "-"}
@@ -378,6 +398,8 @@ func (p *Planner) execute(parent context.Context, session Session) {
 		finish(SessionFailed, scanErr)
 	case turnError != "":
 		finish(SessionFailed, errors.New(turnError))
+	case readErr == nil && current.Kind != PlanningSession && current.ThreadID == "":
+		finish(SessionFailed, fmt.Errorf("native thread identity was not observed"))
 	case waitErr != nil:
 		finish(SessionFailed, waitErr)
 	case readErr != nil:

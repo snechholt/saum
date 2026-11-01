@@ -104,6 +104,16 @@ func (s *Store) ownedWorkspace(ctx context.Context, factoryID, path string) (Own
 	if !found {
 		return OwnedWorkspace{}, fmt.Errorf("workspace is not registered with its factory repository")
 	}
+	if worktree != repo {
+		branch, err := gitOutput(ctx, worktree, "symbolic-ref", "HEAD")
+		if err != nil {
+			return OwnedWorkspace{}, fmt.Errorf("goal worktree must remain on its managed branch")
+		}
+		expected := "refs/heads/saum/" + filepath.Base(worktree)
+		if strings.TrimSpace(string(branch)) != expected {
+			return OwnedWorkspace{}, fmt.Errorf("goal worktree branch ownership changed")
+		}
+	}
 	identity, err := os.Stat(worktree)
 	if err != nil {
 		return OwnedWorkspace{}, err

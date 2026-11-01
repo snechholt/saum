@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 )
@@ -137,10 +138,28 @@ func (s *Store) workItemTurnReady(session Session) error {
 		if item.Status != "review_requested" {
 			return fmt.Errorf("goal agent must submit each acceptance criterion and call saum.work_item.request_review()")
 		}
+		_, tree, err := s.sessionArtifact(context.Background(), session.ID)
+		if err != nil {
+			return err
+		}
+		var sealed ArtifactTree
+		if err := s.db.QueryRow("SELECT review_tree FROM work_items WHERE id=?", item.ID).Scan(&sealed); err != nil {
+			return err
+		}
+		if sealed == "" || sealed != tree {
+			return fmt.Errorf("source changed after requesting review")
+		}
 		return nil
 	}
 	for _, review := range item.Reviews {
 		if review.SummarySessionID == session.ID {
+			_, tree, err := s.sessionArtifact(context.Background(), session.ID)
+			if err != nil {
+				return err
+			}
+			if review.ArtifactTree == "" || tree != review.ArtifactTree {
+				return fmt.Errorf("source changed during executive review")
+			}
 			return nil
 		}
 	}

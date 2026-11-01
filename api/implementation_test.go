@@ -43,9 +43,35 @@ func startClaimed(t *testing.T, s *Store) Session {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.startSession(run.ID, t.TempDir(), "prompt", "token"); err != nil {
+	plan, err := s.session(run.ParentSessionID)
+	if err != nil {
 		t.Fatal(err)
 	}
+	path := plan.Worktree
+	if run.Kind == SummarySession {
+		factoryID, _, _, _ := s.storyContext(run.StoryID)
+		_, path, err = s.factoryWorkspace(factoryID)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := s.startSession(run.ID, path, "prompt", "token"); err != nil {
+		t.Fatal(err)
+	}
+	thread, err := s.sessionThread(run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if thread == "" {
+		thread = "goal-thread"
+		if run.Kind == SummarySession {
+			thread = "factory-thread"
+		}
+	}
+	if err := s.saveSessionThread(run, thread); err != nil {
+		t.Fatal(err)
+	}
+	run, _ = s.session(run.ID)
 	return run
 }
 func submitCriteria(t *testing.T, s *Store, run Session) {
@@ -54,8 +80,9 @@ func submitCriteria(t *testing.T, s *Store, run Session) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	check := successfulCheck(t, s, run, []string{"/usr/bin/true"})
 	for index := range item.AcceptanceCriteria {
-		if err := s.submitAcceptanceCriterion(run.ID, CriterionInput{CriterionIndex: &index, Summary: "Verified behavior", Evidence: []string{"Automated test passed"}}); err != nil {
+		if err := s.submitAcceptanceCriterion(run.ID, CriterionInput{CriterionIndex: &index, Summary: "Verified behavior", Evidence: []string{"Observed test fixture command"}, CheckIDs: []string{check.ID}}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -244,7 +271,7 @@ func TestWorkItemHelperProcess(t *testing.T) {
 		thread = "factory-thread"
 	}
 	fmt.Printf("{\"type\":\"thread.started\",\"thread_id\":%q}\n", thread)
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	client := mcp.NewClient(&mcp.Implementation{Name: "work-item-test", Version: "1"}, nil)
 	session, err := client.Connect(ctx, &mcp.StreamableClientTransport{Endpoint: os.Getenv("SAUM_TEST_MCP_URL"), HTTPClient: &http.Client{Transport: bearerTransport{os.Getenv("SAUM_SESSION_TOKEN")}}, DisableStandaloneSSE: true}, nil)
@@ -252,12 +279,21 @@ func TestWorkItemHelperProcess(t *testing.T) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
-	call := func(code string) {
+	call := func(code string) json.RawMessage {
 		result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "execute", Arguments: map[string]string{"code": code}})
 		if err != nil || result.IsError {
 			fmt.Fprintln(os.Stderr, result, err)
 			os.Exit(3)
 		}
+		data, _ := json.Marshal(result.StructuredContent)
+		var response struct {
+			Result json.RawMessage `json:"result"`
+		}
+		if err := json.Unmarshal(data, &response); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(3)
+		}
+		return response.Result
 	}
 	if role == "summary" {
 		call(`return saum.work_item.submit_executive_summary({summary:"Software is runnable.",verification:"Observed successful go run main.go.",risks:[]});`)
@@ -276,8 +312,30 @@ func TestWorkItemHelperProcess(t *testing.T) {
 			fmt.Fprintln(os.Stderr, string(output), err)
 			os.Exit(5)
 		}
+		var check VerificationCheck
+		_ = json.Unmarshal(call(`return saum.work_item.run_check({command:["/usr/bin/true"]});`), &check)
+		for attempt := 0; attempt < 300; attempt++ {
+			var report struct {
+				Checks []VerificationCheck `json:"checks"`
+			}
+			_ = json.Unmarshal(call(`return saum.work_item.checks();`), &report)
+			for _, candidate := range report.Checks {
+				if candidate.ID == check.ID {
+					check = candidate
+				}
+			}
+			if check.Status == "passed" || check.Status == "failed" {
+				break
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+		if check.Status != "passed" {
+			fmt.Fprintln(os.Stderr, "verification failed", check)
+			os.Exit(11)
+		}
 		for index := range item.AcceptanceCriteria {
-			call(fmt.Sprintf(`return saum.work_item.submit_acceptance_criteria({criterionIndex:%d,summary:"Executable works",evidence:["go run main.go printed implemented"]});`, index))
+			payload, _ := json.Marshal(CriterionInput{CriterionIndex: &index, Summary: "Executable works", Evidence: []string{"Recorded check"}, CheckIDs: []string{check.ID}})
+			call("return saum.work_item.submit_acceptance_criteria(" + string(payload) + ");")
 		}
 		if role != "skip-request" {
 			call(`return saum.work_item.request_review();`)
