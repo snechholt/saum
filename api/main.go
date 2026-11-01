@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -17,20 +19,14 @@ import (
 	"unicode/utf8"
 )
 
-// A project is only a named container. It has no internal workflow yet.
-type Project struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
-
 func parseName(raw string) (string, error) {
 	name := strings.TrimSpace(raw)
 	if !utf8.ValidString(name) || utf8.RuneCountInString(name) < 1 || utf8.RuneCountInString(name) > 80 {
-		return "", fmt.Errorf("Project name must contain 1–80 characters")
+		return "", fmt.Errorf("Name must contain 1–80 characters")
 	}
 	for _, character := range name {
 		if unicode.IsControl(character) {
-			return "", fmt.Errorf("Project name cannot contain control characters")
+			return "", fmt.Errorf("Name cannot contain control characters")
 		}
 	}
 	return name, nil
@@ -40,73 +36,102 @@ func jsonResponse(w http.ResponseWriter, status int, value any) {
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(value)
 }
-func (f *Factory) handler(web http.Handler) http.Handler {
+func problem(w http.ResponseWriter, status int, message string) {
+	jsonResponse(w, status, map[string]string{"error": message})
+}
+
+func (s *Store) handler(web http.Handler) http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /api/projects", func(w http.ResponseWriter, r *http.Request) {
-		projects, err := f.list()
-		if err != nil {
-			jsonResponse(w, 500, map[string]string{"error": "Could not load projects"})
-			return
-		}
-		jsonResponse(w, 200, projects)
-	})
-	mux.HandleFunc("POST /api/projects", func(w http.ResponseWriter, r *http.Request) {
-		if strings.Split(r.Header.Get("Content-Type"), ";")[0] != "application/json" {
-			jsonResponse(w, 415, map[string]string{"error": "Expected application/json"})
-			return
-		}
-		r.Body = http.MaxBytesReader(w, r.Body, 4096)
-		var input struct {
-			Name string `json:"name"`
-		}
-		decoder := json.NewDecoder(r.Body)
-		decoder.DisallowUnknownFields()
-		if decoder.Decode(&input) != nil || decoder.Decode(new(any)) != io.EOF {
-			jsonResponse(w, 400, map[string]string{"error": "Invalid project request"})
-			return
-		}
-		name, err := parseName(input.Name)
-		if err != nil {
-			jsonResponse(w, 400, map[string]string{"error": err.Error()})
-			return
-		}
-		project, err := f.create(name)
-		if err != nil {
-			jsonResponse(w, 500, map[string]string{"error": "Could not save project"})
-			return
-		}
-		jsonResponse(w, 201, project)
-	})
-	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) { http.NotFound(w, r) })
+	mux.HandleFunc("GET /api/factories", s.getFactories)
+	mux.HandleFunc("POST /api/factories", s.postFactory)
+	mux.HandleFunc("GET /api/factories/{factory}/projects", s.getProjects)
+	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) { problem(w, 404, "Not found") })
 	mux.Handle("/", web)
+	return localOnly(mux)
+}
+func (s *Store) getFactories(w http.ResponseWriter, r *http.Request) {
+	factories, err := s.listFactories()
+	if err != nil {
+		problem(w, 500, "Could not load factories")
+		return
+	}
+	jsonResponse(w, 200, factories)
+}
+func (s *Store) postFactory(w http.ResponseWriter, r *http.Request) {
+	if strings.Split(r.Header.Get("Content-Type"), ";")[0] != "application/json" {
+		problem(w, 415, "Expected application/json")
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4096)
+	var input struct {
+		Name string `json:"name"`
+	}
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if decoder.Decode(&input) != nil || decoder.Decode(new(any)) != io.EOF {
+		problem(w, 400, "Invalid factory request")
+		return
+	}
+	name, err := parseName(input.Name)
+	if err != nil {
+		problem(w, 400, err.Error())
+		return
+	}
+	factory, err := s.createFactory(name)
+	if err != nil {
+		problem(w, 500, "Could not save factory")
+		return
+	}
+	jsonResponse(w, 201, factory)
+}
+func (s *Store) getProjects(w http.ResponseWriter, r *http.Request) {
+	projects, err := s.listProjects(r.PathValue("factory"))
+	if errors.Is(err, sql.ErrNoRows) {
+		problem(w, 404, "Factory not found")
+		return
+	}
+	if err != nil {
+		problem(w, 500, "Could not load projects")
+		return
+	}
+	jsonResponse(w, 200, projects)
+}
+func localOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Cache-Control", "no-store")
 		if r.Host != "127.0.0.1:8080" && r.Host != "localhost:8080" {
-			http.Error(w, "Local requests only", 403)
+			problem(w, 403, "Local requests only")
 			return
 		}
 		origin := r.Header.Get("Origin")
-		if origin != "" && origin != "http://"+r.Host && origin != "http://127.0.0.1:5173" {
-			http.Error(w, "Cross-origin request rejected", 403)
+		if origin != "" && origin != "http://"+r.Host && origin != "http://127.0.0.1:5173" && origin != "http://localhost:5173" {
+			problem(w, 403, "Cross-origin request rejected")
 			return
 		}
 		if r.Header.Get("Sec-Fetch-Site") == "cross-site" {
-			http.Error(w, "Cross-site request rejected", 403)
+			problem(w, 403, "Cross-site request rejected")
 			return
 		}
-		mux.ServeHTTP(w, r)
+		next.ServeHTTP(w, r)
 	})
 }
 func main() {
 	data := flag.String("data", "../.saum/factory.sqlite", "SQLite database file")
 	flag.Parse()
-	factory, err := openFactory(*data)
+	store, err := openStore(*data)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer factory.db.Close()
-	server := &http.Server{Addr: "127.0.0.1:8080", Handler: factory.handler(http.FileServer(http.Dir("../sites/dashboard/dist"))), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
+	defer store.db.Close()
+	server := &http.Server{
+		Addr:              "127.0.0.1:8080",
+		Handler:           store.handler(http.FileServer(http.Dir("../sites/dashboard/dist"))),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	go func() {

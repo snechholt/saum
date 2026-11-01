@@ -9,9 +9,20 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-type Factory struct{ db *sql.DB }
+type Factory struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
 
-func openFactory(file string) (*Factory, error) {
+// Projects have no behavior yet; they belong to a Factory.
+type Project struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type Store struct{ db *sql.DB }
+
+func openStore(file string) (*Store, error) {
 	if err := os.MkdirAll(filepath.Dir(file), 0700); err != nil {
 		return nil, err
 	}
@@ -19,20 +30,52 @@ func openFactory(file string) (*Factory, error) {
 	if err != nil {
 		return nil, err
 	}
-	// One connection serializes the small local factory's reads and writes.
+	// Keep foreign-key settings and serialized writes on one connection.
 	db.SetMaxOpenConns(1)
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS projects (
-  id TEXT PRIMARY KEY NOT NULL,
-  name TEXT NOT NULL CHECK (length(trim(name)) BETWEEN 1 AND 80)
- )`)
-	if err != nil {
+	if _, err = db.Exec("PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;"); err != nil {
 		_ = db.Close()
 		return nil, err
 	}
-	return &Factory{db: db}, nil
+	if err = migrate(db, filepath.Join(filepath.Dir(file), "projects.json")); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	return &Store{db: db}, nil
 }
-func (f *Factory) list() ([]Project, error) {
-	rows, err := f.db.Query("SELECT id, name FROM projects ORDER BY rowid")
+func (s *Store) listFactories() ([]Factory, error) {
+	rows, err := s.db.Query("SELECT id, name FROM factories ORDER BY rowid")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	factories := []Factory{}
+	for rows.Next() {
+		var factory Factory
+		if err := rows.Scan(&factory.ID, &factory.Name); err != nil {
+			return nil, err
+		}
+		factories = append(factories, factory)
+	}
+	return factories, rows.Err()
+}
+func (s *Store) createFactory(rawName string) (Factory, error) {
+	name, err := parseName(rawName)
+	if err != nil {
+		return Factory{}, err
+	}
+	factory := Factory{ID: rand.Text(), Name: name}
+	_, err = s.db.Exec("INSERT INTO factories (id, name) VALUES (?, ?)", factory.ID, factory.Name)
+	if err != nil {
+		return Factory{}, err
+	}
+	return factory, nil
+}
+func (s *Store) listProjects(factoryID string) ([]Project, error) {
+	var exists int
+	if err := s.db.QueryRow("SELECT 1 FROM factories WHERE id = ?", factoryID).Scan(&exists); err != nil {
+		return nil, err
+	}
+	rows, err := s.db.Query("SELECT id, name FROM projects WHERE factory_id = ? ORDER BY rowid", factoryID)
 	if err != nil {
 		return nil, err
 	}
@@ -46,16 +89,4 @@ func (f *Factory) list() ([]Project, error) {
 		projects = append(projects, project)
 	}
 	return projects, rows.Err()
-}
-func (f *Factory) create(rawName string) (Project, error) {
-	name, err := parseName(rawName)
-	if err != nil {
-		return Project{}, err
-	}
-	project := Project{ID: rand.Text(), Name: name}
-	_, err = f.db.Exec("INSERT INTO projects (id, name) VALUES (?, ?)", project.ID, project.Name)
-	if err != nil {
-		return Project{}, err
-	}
-	return project, nil
 }
