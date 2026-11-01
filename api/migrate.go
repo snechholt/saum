@@ -19,10 +19,13 @@ func migrate(db *sql.DB, legacyFile string) error {
 	if err := db.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
 		return err
 	}
-	if version == 3 {
+	if version == 4 {
 		return nil
 	}
-	if version < 0 || version > 3 {
+	if version == 3 {
+		return migrateSessions(db)
+	}
+	if version < 0 || version > 4 {
 		return fmt.Errorf("unsupported database version %d", version)
 	}
 	tx, err := db.Begin()
@@ -66,7 +69,10 @@ func migrate(db *sql.DB, legacyFile string) error {
 	if _, err = tx.Exec("DROP TABLE IF EXISTS projects; PRAGMA user_version = 3;"); err != nil {
 		return err
 	}
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return migrateSessions(db)
 }
 
 const storySchema = `CREATE TABLE user_stories (

@@ -9,9 +9,11 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -48,6 +50,11 @@ func (s *Store) handler(web http.Handler) http.Handler {
 	mux.HandleFunc("DELETE /api/factories/{factory}", s.removeFactory)
 	mux.HandleFunc("GET /api/factories/{factory}/stories", s.getStories)
 	mux.HandleFunc("POST /api/factories/{factory}/stories", s.postStory)
+	mux.Handle("/mcp", s.mcpHandler())
+	mux.HandleFunc("GET /api/sessions/{session}", s.getSession)
+	mux.HandleFunc("GET /api/sessions/{session}/events", s.getSessionEvents)
+	mux.HandleFunc("DELETE /api/sessions/{session}", s.cancelSession)
+	mux.HandleFunc("POST /api/stories/{story}/planning", s.retryPlanning)
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) { problem(w, 404, "Not found") })
 	mux.Handle("/", web)
 	return localOnly(mux)
@@ -146,15 +153,23 @@ func localOnly(next http.Handler) http.Handler {
 }
 func main() {
 	data := flag.String("data", "../.saum/factory.sqlite", "SQLite database file")
+	codex := flag.String("codex", "codex", "Codex executable")
+	workerEnabled := flag.Bool("worker", true, "Automatically decompose user stories")
 	flag.Parse()
 	store, err := openStore(*data)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer store.db.Close()
+	root, err := filepath.Abs(filepath.Dir(*data))
+	if err != nil {
+		log.Fatal(err)
+	}
+	planner := &Planner{Store: store, Root: root, Codex: *codex, MCPURL: "http://127.0.0.1:8080/mcp"}
+	store.planner = planner
 	server := &http.Server{
 		Addr:              "127.0.0.1:8080",
-		Handler:           store.handler(http.FileServer(http.Dir("../sites/dashboard/dist"))),
+		Handler:           store.handler(dashboardHandler("../sites/dashboard/dist")),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,
@@ -162,6 +177,17 @@ func main() {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	listener, err := net.Listen("tcp", server.Addr)
+	if err != nil {
+		log.Fatal(err)
+	}
+	workerDone := make(chan struct{})
+	go func() {
+		defer close(workerDone)
+		if *workerEnabled {
+			planner.Run(ctx)
+		}
+	}()
 	go func() {
 		<-ctx.Done()
 		shutdown, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -169,7 +195,9 @@ func main() {
 		_ = server.Shutdown(shutdown)
 	}()
 	log.Print("Saum API → http://127.0.0.1:8080")
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatal(err)
+	if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
+		log.Print(err)
 	}
+	stop()
+	<-workerDone
 }
