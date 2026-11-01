@@ -1,15 +1,17 @@
 import { useCallback, useState, type FormEvent } from "react";
 import { Button } from "@cloudflare/kumo/components/button";
-import { createFactory, type Factory } from "./api";
+import { createFactory, updateFactory, type Factory } from "./api";
 
-export function NewFactoryForm({
-  onCreated,
+export function FactoryForm({
+  factory,
+  onSaved,
   onCancel,
 }: {
-  onCreated: (factory: Factory) => void;
+  factory?: Factory;
+  onSaved: (factory: Factory) => void;
   onCancel: () => void;
 }) {
-  const [name, setName] = useState("");
+  const [name, setName] = useState(factory?.name ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const focusName = useCallback((element: HTMLInputElement | null) => element?.focus(), []);
@@ -20,9 +22,9 @@ export function NewFactoryForm({
     setSaving(true);
     setError("");
     try {
-      onCreated(await createFactory(name));
+      onSaved(await (factory ? updateFactory(factory.id, name) : createFactory(name)));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not create factory.");
+      setError(reason instanceof Error ? reason.message : "Could not save factory.");
     } finally {
       setSaving(false);
     }
@@ -60,7 +62,7 @@ export function NewFactoryForm({
           loading={saving}
           disabled={!name.trim() || saving}
         >
-          Create
+          {factory ? "Save" : "Create"}
         </Button>
       </div>
     </form>

@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
-import { FolderSimple } from "@phosphor-icons/react";
+import { DataTable, type Column } from "@saum/ui";
 import { listProjects, type Factory, type Project } from "./api";
+
+const columns: Column<Project>[] = [
+  { id: "name", header: "Name", value: (project) => project.name },
+];
 
 type ProjectList =
   | { status: "loading" }
@@ -35,17 +39,14 @@ export function FactoryProjects({ factory }: { factory: Factory }) {
         <p className="error-message" role="alert">
           Could not load projects.
         </p>
-      ) : list.projects.length === 0 ? (
-        <p className="empty-state">No projects</p>
       ) : (
-        <div className="item-grid">
-          {list.projects.map((project) => (
-            <article className="item-card" key={project.id}>
-              <FolderSimple size={22} weight="duotone" />
-              <h3>{project.name}</h3>
-            </article>
-          ))}
-        </div>
+        <DataTable
+          rows={list.projects}
+          columns={columns}
+          rowKey={(project) => project.id}
+          label="Projects"
+          emptyMessage="No projects"
+        />
       )}
     </>
   );

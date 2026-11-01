@@ -119,35 +119,16 @@ h1 {
   gap: 8px;
   margin-top: 13px;
 }
-.item-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 16px;
-  margin-top: 23px;
-}
-.item-card {
-  display: block;
-  background: #fff;
+.table-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
   text-align: left;
-  border: 1px solid #e3e9f1;
-  border-radius: 8px;
-  padding: 22px;
 }
-.item-card > svg {
-  display: block;
-  color: #849bbd;
-  margin-bottom: 20px;
-}
-.item-card h3,
-.item-name {
-  font-weight: 500;
-  font-size: 13px;
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-.factory-card:hover {
-  border-color: #b8c8df;
-  background: #fafcff;
+.table-link:hover {
+  text-decoration: underline;
 }
 .section-title {
   font-size: 13px;

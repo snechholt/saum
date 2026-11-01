@@ -19,6 +19,7 @@ function parseNamedItem(value: unknown): NamedItem {
 }
 async function request(path: string, init?: RequestInit): Promise<unknown> {
   const response = await fetch(`/api/${path}`, init);
+  if (response.status === 204) return null;
   const body: unknown = await response.json();
   if (!response.ok) {
     const message =
@@ -44,6 +45,18 @@ export async function createFactory(name: string): Promise<Factory> {
       body: JSON.stringify({ name }),
     }),
   );
+}
+export async function updateFactory(id: Factory["id"], name: string): Promise<Factory> {
+  return parseNamedItem(
+    await request(`factories/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    }),
+  );
+}
+export async function deleteFactory(id: Factory["id"]): Promise<void> {
+  await request(`factories/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 export async function listProjects(factoryID: Factory["id"]): Promise<Project[]> {
   return parseList(await request(`factories/${encodeURIComponent(factoryID)}/projects`));

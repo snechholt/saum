@@ -1,19 +1,23 @@
 import { useEffect, useState } from "react";
 import { Button } from "@cloudflare/kumo/components/button";
 import { Factory as FactoryIcon, Plus, SquaresFour } from "@phosphor-icons/react";
-import { listFactories, type Factory } from "./api";
-import { NewFactoryForm } from "./NewFactoryForm";
+import { DataTable, type Column } from "@saum/ui";
+import { deleteFactory, listFactories, type Factory } from "./api";
+import { FactoryForm } from "./FactoryForm";
 import { FactoryProjects } from "./FactoryProjects";
 
 type FactoryList =
   | { status: "loading" }
   | { status: "ready"; factories: Factory[] }
   | { status: "failed" };
+type Form = { mode: "create" } | { mode: "edit"; factory: Factory } | null;
 
 export default function App() {
   const [list, setList] = useState<FactoryList>({ status: "loading" });
   const [selected, setSelected] = useState<Factory | null>(null);
-  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState<Form>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     let ignore = false;
@@ -29,14 +33,61 @@ export default function App() {
     };
   }, []);
 
-  function factoryCreated(factory: Factory) {
-    setList((current) =>
-      current.status === "ready"
-        ? { status: "ready", factories: [...current.factories, factory] }
-        : current,
-    );
-    setCreating(false);
+  function factorySaved(factory: Factory) {
+    setList((current) => {
+      if (current.status !== "ready") return current;
+      const exists = current.factories.some((item) => item.id === factory.id);
+      return {
+        status: "ready",
+        factories: exists
+          ? current.factories.map((item) => (item.id === factory.id ? factory : item))
+          : [...current.factories, factory],
+      };
+    });
+    setSelected((current) => (current?.id === factory.id ? factory : current));
+    setForm(null);
   }
+
+  async function removeFactory(factory: Factory) {
+    if (deleting || !window.confirm(`Delete “${factory.name}”?`)) return;
+    setDeleting(factory.id);
+    setError("");
+    try {
+      await deleteFactory(factory.id);
+      setList((current) =>
+        current.status === "ready"
+          ? {
+              status: "ready",
+              factories: current.factories.filter((item) => item.id !== factory.id),
+            }
+          : current,
+      );
+      setSelected((current) => (current?.id === factory.id ? null : current));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not delete factory.");
+    } finally {
+      setDeleting(null);
+    }
+  }
+
+  const columns: Column<Factory>[] = [
+    {
+      id: "name",
+      header: "Name",
+      value: (factory) => factory.name,
+      render: (factory) => (
+        <button
+          className="table-link"
+          onClick={() => {
+            setForm(null);
+            setSelected(factory);
+          }}
+        >
+          {factory.name}
+        </button>
+      ),
+    },
+  ];
 
   return (
     <div className="factory-layout">
@@ -48,7 +99,10 @@ export default function App() {
         <button
           className="nav-item"
           aria-current={selected ? undefined : "page"}
-          onClick={() => setSelected(null)}
+          onClick={() => {
+            setSelected(null);
+            setError("");
+          }}
         >
           <SquaresFour size={17} />
           <span>Factories</span>
@@ -65,15 +119,28 @@ export default function App() {
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() => setCreating(true)}
-                disabled={list.status !== "ready" || creating}
+                onClick={() => {
+                  setForm({ mode: "create" });
+                  setError("");
+                }}
+                disabled={list.status !== "ready" || form !== null || deleting !== null}
               >
                 <Plus size={15} />
                 New factory
               </Button>
             </header>
-            {creating && (
-              <NewFactoryForm onCreated={factoryCreated} onCancel={() => setCreating(false)} />
+            {error && (
+              <p className="error-message" role="alert">
+                {error}
+              </p>
+            )}
+            {form && (
+              <FactoryForm
+                key={form.mode === "edit" ? form.factory.id : "new"}
+                {...(form.mode === "edit" ? { factory: form.factory } : {})}
+                onSaved={factorySaved}
+                onCancel={() => setForm(null)}
+              />
             )}
             {list.status === "loading" ? (
               <output className="empty-state">Loading…</output>
@@ -81,24 +148,42 @@ export default function App() {
               <p className="error-message" role="alert">
                 Could not load factories. Reload to try again.
               </p>
-            ) : list.factories.length === 0 ? (
-              <p className="empty-state">No factories</p>
             ) : (
-              <div className="item-grid">
-                {list.factories.map((factory) => (
-                  <button
-                    className="item-card factory-card"
-                    key={factory.id}
-                    onClick={() => {
-                      setCreating(false);
-                      setSelected(factory);
-                    }}
-                  >
-                    <FactoryIcon size={22} weight="duotone" />
-                    <span className="item-name">{factory.name}</span>
-                  </button>
-                ))}
-              </div>
+              <DataTable
+                rows={list.factories}
+                columns={columns}
+                rowKey={(factory) => factory.id}
+                label="Factories"
+                emptyMessage="No factories"
+                actions={(factory) => (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={form !== null || deleting !== null}
+                      aria-label={`Edit ${factory.name}`}
+                      onClick={() => {
+                        setForm({ mode: "edit", factory });
+                        setError("");
+                      }}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={form !== null || deleting !== null}
+                      aria-label={`Delete ${factory.name}`}
+                      loading={deleting === factory.id}
+                      onClick={() => {
+                        void removeFactory(factory);
+                      }}
+                    >
+                      Delete
+                    </Button>
+                  </>
+                )}
+              />
             )}
           </>
         )}
