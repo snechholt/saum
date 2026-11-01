@@ -199,12 +199,19 @@ func (p *Planner) execute(parent context.Context, session Session) {
 		finish(SessionFailed, err)
 		return
 	}
-	path, err := p.worktree(ctx, factoryID, session.ID)
+	path, err := p.sessionWorkspace(ctx, session, factoryID)
 	if err != nil {
 		finish(SessionFailed, err)
 		return
 	}
 	prompt := planningPrompt(title, goal)
+	if session.FeedbackBatchID != "" {
+		prompt, err = p.Store.revisionPrompt(session, title, goal)
+		if err != nil {
+			finish(SessionFailed, err)
+			return
+		}
+	}
 	token := rand.Text()
 	if err = p.Store.startSession(session.ID, path, prompt, token); err != nil {
 		finish(SessionFailed, err)

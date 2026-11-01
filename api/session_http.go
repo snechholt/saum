@@ -22,10 +22,22 @@ func (s *Store) getSession(w http.ResponseWriter, r *http.Request) {
 		problem(w, 500, "Could not load items")
 		return
 	}
+	comments, err := s.planComments(session.ID)
+	if err != nil {
+		problem(w, 500, "Could not load comments")
+		return
+	}
+	feedback, err := s.receivedFeedback(session.FeedbackBatchID)
+	if err != nil {
+		problem(w, 500, "Could not load feedback")
+		return
+	}
 	jsonResponse(w, 200, struct {
-		Session Session      `json:"session"`
-		Items   []ActionItem `json:"items"`
-	}{session, items})
+		Session          Session       `json:"session"`
+		Items            []ActionItem  `json:"items"`
+		Comments         []PlanComment `json:"comments"`
+		ReceivedFeedback []PlanComment `json:"receivedFeedback"`
+	}{session, items, comments, feedback})
 }
 func (s *Store) getSessionEvents(w http.ResponseWriter, r *http.Request) {
 	if _, err := s.session(r.PathValue("session")); errors.Is(err, sql.ErrNoRows) {

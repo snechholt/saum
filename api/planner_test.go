@@ -83,7 +83,7 @@ func TestCodexHelperProcess(t *testing.T) {
 		fmt.Println(`{"type":"turn.failed","error":{"message":"test provider failure"}}`)
 		os.Exit(1)
 	}
-	if mode == "full" {
+	if mode == "full" || mode == "revision" {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		client := mcp.NewClient(&mcp.Implementation{Name: "codex-test", Version: "1"}, nil)
@@ -103,12 +103,26 @@ func TestCodexHelperProcess(t *testing.T) {
 			os.Exit(7)
 		}
 		input := ItemSubmission{Key: "authentication", Title: "Implement sign-in", Description: "Deliver sign-in for existing users without exposing private information.", AcceptanceCriteria: []string{"An authenticated user can access their own private information", "An unauthenticated request is rejected"}}
+		operation := "submit_item"
+		if mode == "revision" {
+			operation = "update_item"
+			input.Title = "Deliver secure sign-in"
+			input.Description = "Use the feedback to deliver secure sign-in for existing users."
+		}
 		inputJSON, _ := json.Marshal(input)
 		for range 2 {
-			result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "execute", Arguments: map[string]string{"code": "return saum.submit_item(" + string(inputJSON) + ");"}})
+			result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "execute", Arguments: map[string]string{"code": "return saum." + operation + "(" + string(inputJSON) + ");"}})
 			if err != nil || result.IsError {
 				fmt.Fprintf(os.Stderr, "submit failed: %+v %v\n", result, err)
 				os.Exit(3)
+			}
+		}
+		if mode == "revision" {
+			resolution, _ := json.Marshal(FeedbackResolution{CommentID: os.Getenv("SAUM_TEST_FEEDBACK_ID"), Resolution: "Updated the item title and work to address the comment."})
+			result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "execute", Arguments: map[string]string{"code": "return saum.resolve_feedback(" + string(resolution) + ");"}})
+			if err != nil || result.IsError {
+				fmt.Fprintln(os.Stderr, "resolve failed", err)
+				os.Exit(9)
 			}
 		}
 		result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "execute", Arguments: map[string]string{"code": "return saum.complete_plan();"}})

@@ -24,16 +24,20 @@ const (
 )
 
 type Session struct {
-	ID            string        `json:"id"`
-	StoryID       string        `json:"storyId"`
-	Status        SessionStatus `json:"status"`
-	Worktree      string        `json:"worktree"`
-	ThreadID      string        `json:"threadId"`
-	Prompt        string        `json:"prompt"`
-	Error         string        `json:"error"`
-	PlanSubmitted bool          `json:"planSubmitted"`
-	CreatedAt     string        `json:"createdAt"`
-	FinishedAt    string        `json:"finishedAt"`
+	ID              string        `json:"id"`
+	StoryID         string        `json:"storyId"`
+	Status          SessionStatus `json:"status"`
+	Worktree        string        `json:"worktree"`
+	ThreadID        string        `json:"threadId"`
+	Prompt          string        `json:"prompt"`
+	Error           string        `json:"error"`
+	PlanSubmitted   bool          `json:"planSubmitted"`
+	CreatedAt       string        `json:"createdAt"`
+	FinishedAt      string        `json:"finishedAt"`
+	ParentSessionID string        `json:"parentSessionId"`
+	FeedbackBatchID string        `json:"feedbackBatchId"`
+	ReviewStatus    ReviewStatus  `json:"reviewStatus"`
+	ReviewedAt      string        `json:"reviewedAt"`
 }
 type SessionEvent struct {
 	ID     int64  `json:"id"`
@@ -49,7 +53,7 @@ type ActionItem struct {
 	AcceptanceCriteria []string `json:"acceptanceCriteria"`
 }
 
-const sessionColumns = "id, story_id, status, worktree, thread_id, prompt, error, plan_submitted, created_at, finished_at"
+const sessionColumns = "id, story_id, status, worktree, thread_id, prompt, error, plan_submitted, created_at, finished_at, COALESCE(parent_session_id,''), COALESCE(feedback_batch_id,''), review_status, reviewed_at"
 
 func migrateSessions(db *sql.DB) error {
 	tx, err := db.Begin()
@@ -86,11 +90,14 @@ func migrateSessions(db *sql.DB) error {
 	if err != nil {
 		return err
 	}
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return migratePlanReview(db)
 }
 func scanSession(row interface{ Scan(...any) error }) (Session, error) {
 	var session Session
-	err := row.Scan(&session.ID, &session.StoryID, &session.Status, &session.Worktree, &session.ThreadID, &session.Prompt, &session.Error, &session.PlanSubmitted, &session.CreatedAt, &session.FinishedAt)
+	err := row.Scan(&session.ID, &session.StoryID, &session.Status, &session.Worktree, &session.ThreadID, &session.Prompt, &session.Error, &session.PlanSubmitted, &session.CreatedAt, &session.FinishedAt, &session.ParentSessionID, &session.FeedbackBatchID, &session.ReviewStatus, &session.ReviewedAt)
 	return session, err
 }
 func (s *Store) session(id string) (Session, error) {
@@ -129,7 +136,35 @@ func (s *Store) retryStory(storyID string) (Session, error) {
 	if active > 0 {
 		return Session{}, fmt.Errorf("User story already has an active session")
 	}
-	session := Session{ID: rand.Text(), StoryID: storyID, Status: SessionQueued, CreatedAt: time.Now().UTC().Format(time.RFC3339Nano)}
+	var latestID, parentID, batchID string
+	var review ReviewStatus
+	err = tx.QueryRow("SELECT id,COALESCE(parent_session_id,''),COALESCE(feedback_batch_id,''),review_status FROM sessions WHERE story_id=? ORDER BY rowid DESC LIMIT 1", storyID).Scan(&latestID, &parentID, &batchID, &review)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return Session{}, err
+	}
+	if review == ReviewApproved {
+		return Session{}, fmt.Errorf("%w: approved plans cannot be replanned", ErrReviewConflict)
+	}
+	if latestID != "" {
+		var pending int
+		if err := tx.QueryRow("SELECT count(*) FROM plan_comments WHERE session_id=? AND batch_id IS NULL", latestID).Scan(&pending); err != nil {
+			return Session{}, err
+		}
+		if pending > 0 {
+			return Session{}, fmt.Errorf("%w: send pending feedback instead of replanning", ErrReviewConflict)
+		}
+	}
+	if batchID != "" {
+		session, err := queueRevision(tx, storyID, parentID, batchID)
+		if err != nil {
+			return Session{}, err
+		}
+		if err := tx.Commit(); err != nil {
+			return Session{}, err
+		}
+		return session, nil
+	}
+	session := Session{ID: rand.Text(), StoryID: storyID, Status: SessionQueued, ReviewStatus: ReviewPending, CreatedAt: time.Now().UTC().Format(time.RFC3339Nano)}
 	if _, err = tx.Exec("INSERT INTO sessions (id,story_id,status,created_at) VALUES (?,?,?,?)", session.ID, storyID, session.Status, session.CreatedAt); err != nil {
 		return Session{}, err
 	}

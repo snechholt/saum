@@ -20,6 +20,9 @@ type FunctionInfo struct {
 
 var saumFunctions = []FunctionInfo{
 	{Name: "saum.submit_item", Description: "Save one actionable item in this session's user-story plan. A key is idempotent only when the content is identical. Calls commit independently.", Signature: "saum.submit_item({key: string, title: string, description: string, acceptanceCriteria: string[]}): {id, sessionId, key, title, description, acceptanceCriteria}", Example: `return saum.submit_item({key:"login-form",title:"Deliver sign-in",description:"Let existing users sign in with their credentials.",acceptanceCriteria:["Valid credentials open the private area","Invalid credentials are rejected"]});`},
+	{Name: "saum.update_item", Description: "Replace an existing item in the current working plan. Provide every field, preserving its key. Never changes an earlier submitted plan.", Signature: "saum.update_item({key: string, title: string, description: string, acceptanceCriteria: string[]}): Item", Example: `return saum.update_item({key:"login-form",title:"Deliver sign-in",description:"Use the revised behavior.",acceptanceCriteria:["Revised behavior works"]});`},
+	{Name: "saum.remove_item", Description: "Remove an item by key from the current working plan only.", Signature: "saum.remove_item({key: string}): {removed: boolean}", Example: `return saum.remove_item({key:"unnecessary-item"});`},
+	{Name: "saum.resolve_feedback", Description: "Record how a feedback comment assigned to this revision was addressed. Every assigned comment must be resolved before completing the plan. Human approval is still required.", Signature: "saum.resolve_feedback({commentId: string, resolution: string}): {resolved: boolean}", Example: `return saum.resolve_feedback({commentId:"id-from-feedback",resolution:"Updated the item and its acceptance criteria to match the requested behavior."});`},
 	{Name: "saum.complete_plan", Description: "Seal the plan after all items were saved. Requires at least one item. Further submissions are rejected. Does not implement or accept the work.", Signature: "saum.complete_plan(): {submitted: boolean}", Example: "return saum.complete_plan();"},
 }
 
@@ -96,46 +99,85 @@ func (s *Store) runCode(parent context.Context, sessionID, code string) (any, er
 			panic(runtime.NewGoError(err))
 		}
 	}
-	if err := namespace.Set("submit_item", func(call goja.FunctionCall) goja.Value {
-		check()
-		data, err := call.Argument(0).ToObject(runtime).MarshalJSON()
-		if err != nil {
-			panic(runtime.NewGoError(err))
-		}
-		if len(data) > 64000 {
-			panic(runtime.NewGoError(fmt.Errorf("item is too large")))
-		}
-		var input ItemSubmission
+	bind := func(name string, handler func([]byte) (any, error)) error {
+		return namespace.Set(name, func(call goja.FunctionCall) goja.Value {
+			check()
+			data := []byte("{}")
+			if !goja.IsUndefined(call.Argument(0)) {
+				var err error
+				data, err = call.Argument(0).ToObject(runtime).MarshalJSON()
+				if err != nil {
+					panic(runtime.NewGoError(err))
+				}
+			}
+			if len(data) > 64000 {
+				panic(runtime.NewGoError(fmt.Errorf("function input is too large")))
+			}
+			result, err := handler(data)
+			if err != nil {
+				panic(runtime.NewGoError(err))
+			}
+			output, err := json.Marshal(result)
+			if err != nil {
+				panic(runtime.NewGoError(err))
+			}
+			value, err := runtime.RunString("(" + string(output) + ")")
+			if err != nil {
+				panic(runtime.NewGoError(err))
+			}
+			return value
+		})
+	}
+	decode := func(data []byte, input any) error {
 		decoder := json.NewDecoder(strings.NewReader(string(data)))
 		decoder.DisallowUnknownFields()
-		if err := decoder.Decode(&input); err != nil {
-			panic(runtime.NewGoError(err))
-		}
-		item, err := s.submitItem(sessionID, input)
-		if err != nil {
-			panic(runtime.NewGoError(err))
-		}
-		output, _ := json.Marshal(item)
-		value, err := runtime.RunString("(" + string(output) + ")")
-		if err != nil {
-			panic(runtime.NewGoError(err))
-		}
-		return value
-	}); err != nil {
-		return nil, err
+		return decoder.Decode(input)
 	}
-	if err := namespace.Set("complete_plan", func(call goja.FunctionCall) goja.Value {
-		check()
-		if err := s.completePlan(sessionID); err != nil {
-			panic(runtime.NewGoError(err))
+	handlers := []struct {
+		name string
+		call func([]byte) (any, error)
+	}{
+		{"submit_item", func(data []byte) (any, error) {
+			var input ItemSubmission
+			if err := decode(data, &input); err != nil {
+				return nil, err
+			}
+			return s.submitItem(sessionID, input)
+		}},
+		{"update_item", func(data []byte) (any, error) {
+			var input ItemSubmission
+			if err := decode(data, &input); err != nil {
+				return nil, err
+			}
+			return s.updateItem(sessionID, input)
+		}},
+		{"remove_item", func(data []byte) (any, error) {
+			var input struct {
+				Key string `json:"key"`
+			}
+			if err := decode(data, &input); err != nil {
+				return nil, err
+			}
+			err := s.removeItem(sessionID, input.Key)
+			return map[string]bool{"removed": err == nil}, err
+		}},
+		{"resolve_feedback", func(data []byte) (any, error) {
+			var input FeedbackResolution
+			if err := decode(data, &input); err != nil {
+				return nil, err
+			}
+			err := s.resolveFeedback(sessionID, input)
+			return map[string]bool{"resolved": err == nil}, err
+		}},
+		{"complete_plan", func(data []byte) (any, error) {
+			err := s.completePlan(sessionID)
+			return map[string]bool{"submitted": err == nil}, err
+		}},
+	}
+	for _, handler := range handlers {
+		if err := bind(handler.name, handler.call); err != nil {
+			return nil, err
 		}
-		value, err := runtime.RunString("({submitted:true})")
-		if err != nil {
-			panic(runtime.NewGoError(err))
-		}
-		return value
-	}); err != nil {
-		return nil, err
 	}
 	// Only these session-scoped functions are bound. No filesystem, network, process, or Go objects are exposed.
 	if err := runtime.Set("saum", namespace); err != nil {

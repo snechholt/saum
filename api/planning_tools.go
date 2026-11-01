@@ -121,6 +121,13 @@ func (s *Store) completePlan(sessionID string) error {
 	if count == 0 {
 		return fmt.Errorf("submit at least one actionable item before completing the plan")
 	}
+	var unresolved int
+	if err := tx.QueryRow(`SELECT count(*) FROM plan_comments WHERE batch_id=(SELECT feedback_batch_id FROM sessions WHERE id=?) AND NOT EXISTS (SELECT 1 FROM feedback_resolutions WHERE session_id=? AND comment_id=plan_comments.id)`, sessionID, sessionID).Scan(&unresolved); err != nil {
+		return err
+	}
+	if unresolved > 0 {
+		return fmt.Errorf("address all %d remaining feedback comments with saum.resolve_feedback before completing the plan", unresolved)
+	}
 	if _, err = tx.Exec("UPDATE sessions SET plan_submitted=1 WHERE id=?", sessionID); err != nil {
 		return err
 	}
