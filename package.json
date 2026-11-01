@@ -1,0 +1,29 @@
+{
+  "name": "saum",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "sites/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --no-orphans --parallel dev:api dev:site",
+    "dev:api": "cd api && go run .",
+    "dev:site": "bun run --cwd sites/dashboard dev",
+    "build": "bun run --cwd sites/dashboard build",
+    "lint": "oxlint --type-aware --deny-warnings .",
+    "fmt": "oxfmt --write .",
+    "fmt:check": "oxfmt --check .",
+    "typecheck": "tsc -p sites/dashboard",
+    "test": "cd api && go test -race ./...",
+    "check": "bun run fmt:check && bun run lint && bun run typecheck && bun run test"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "oxfmt": "^0.75.0",
+    "oxlint": "^1.90.0",
+    "oxlint-tsgolint": "^7.0.2005",
+    "typescript": "^7.0.2"
+  },
+  "packageManager": "bun@1.4.4"
+}
