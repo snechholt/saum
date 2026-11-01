@@ -19,6 +19,7 @@ import { PlanningBadge } from "./PlanningBadge";
 import { parseTranscript, type TranscriptEntry } from "./transcript";
 
 const markdownPlugins = [remarkGfm];
+const sessionNames = { planning: "Plan", implementation: "Goal turn", summary: "Factory review" };
 function ToolStatus({ status }: { status: string }) {
   return status === "failed" ? (
     <XCircle size={16} className="tool-failed" />
@@ -46,6 +47,13 @@ function ToolEntry({ entry }: { entry: Exclude<TranscriptEntry, { kind: "message
     "saum.update_item": { pending: "Update item", done: "Item updated" },
     "saum.remove_item": { pending: "Remove item", done: "Item removed" },
     "saum.resolve_feedback": { pending: "Address feedback", done: "Feedback addressed" },
+    "saum.start_item": { pending: "Start item", done: "Item started" },
+    "saum.complete_item": { pending: "Complete item", done: "Item completed" },
+    "saum.block_item": { pending: "Report blocker", done: "Item blocked" },
+    "saum.complete_implementation": {
+      pending: "Complete implementation",
+      done: "Implementation submitted",
+    },
     "saum.work_item.submit_acceptance_criteria": {
       pending: "Submit criterion",
       done: "Criterion evidence saved",
@@ -115,7 +123,7 @@ export function AgentTranscript({
   error: string;
   stopping: boolean;
   onSelect: (id: string) => void;
-  onStop: () => void;
+  onStop?: () => void;
 }) {
   const parsed = useMemo(() => parseTranscript(events), [events]);
   const scroll = useRef<HTMLDivElement>(null),
@@ -139,7 +147,7 @@ export function AgentTranscript({
             kind={session?.kind ?? story.sessionKind}
             goalStatus={session?.id === story.sessionId ? story.goalStatus : undefined}
           />
-          {session && active && (
+          {session && active && onStop && (
             <Button
               variant="ghost"
               shape="square"
@@ -163,7 +171,7 @@ export function AgentTranscript({
             }}
             items={sessions.map((attempt, index) => ({
               value: attempt.id,
-              label: `${attempt.kind === "summary" ? "Factory review" : attempt.kind === "implementation" ? "Work" : "Plan"} ${sessions.length - index} · ${planningLabel(attempt.status, attempt.kind)}`,
+              label: `${sessionNames[attempt.kind]} ${sessions.slice(index).filter((run) => run.kind === attempt.kind).length} · ${planningLabel(attempt.status, attempt.kind)}`,
             }))}
           />
         </div>

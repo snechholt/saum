@@ -116,7 +116,7 @@ export function ImplementationProgress({
     setError("");
     try {
       const next =
-        active.status === "blocked"
+        active.status === "blocked" && reply.trim()
           ? await replyToWorkItem(active.id, reply)
           : await retryImplementation(session.storyId);
       onSession(next.id);
@@ -165,7 +165,7 @@ export function ImplementationProgress({
                   shape="square"
                   title="Resume work item"
                   aria-label="Resume work item"
-                  disabled={!reply.trim() || busy}
+                  disabled={(!reply.trim() && active.replies.length === 0) || busy}
                   loading={busy}
                   onClick={() => {
                     void resume();

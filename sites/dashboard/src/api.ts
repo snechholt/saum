@@ -23,7 +23,7 @@ export function parseSessionKind(value: unknown): SessionKind {
   if (value === "planning" || value === "implementation" || value === "summary") return value;
   throw new Error("Invalid session kind.");
 }
-export type Factory = { id: string; name: string };
+export type Factory = { id: string; name: string; workspaceRoot: string; repositoryPath: string };
 export type PlanningStatus =
   | "needs_goal"
   | "queued"
@@ -94,8 +94,7 @@ export function parseUserStory(value: unknown): UserStory {
   };
 }
 
-type NamedItem = { id: string; name: string };
-export function parseNamedItem(value: unknown): NamedItem {
+export function parseFactory(value: unknown): Factory {
   if (
     typeof value !== "object" ||
     value === null ||
@@ -104,11 +103,20 @@ export function parseNamedItem(value: unknown): NamedItem {
     !value.id ||
     !("name" in value) ||
     typeof value.name !== "string" ||
-    !value.name
+    !value.name ||
+    !("workspaceRoot" in value) ||
+    typeof value.workspaceRoot !== "string" ||
+    !("repositoryPath" in value) ||
+    typeof value.repositoryPath !== "string"
   ) {
     throw new Error("The server returned an invalid response.");
   }
-  return { id: value.id, name: value.name };
+  return {
+    id: value.id,
+    name: value.name,
+    workspaceRoot: value.workspaceRoot,
+    repositoryPath: value.repositoryPath,
+  };
 }
 export async function request(path: string, init?: RequestInit): Promise<unknown> {
   const response = await fetch(`/api/${path}`, init);
@@ -123,15 +131,15 @@ export async function request(path: string, init?: RequestInit): Promise<unknown
   }
   return body;
 }
-function parseList(body: unknown): NamedItem[] {
+function parseList(body: unknown): Factory[] {
   if (!Array.isArray(body)) throw new Error("The server returned an invalid list.");
-  return body.map((value: unknown) => parseNamedItem(value));
+  return body.map((value: unknown) => parseFactory(value));
 }
 export async function listFactories(): Promise<Factory[]> {
   return parseList(await request("factories"));
 }
 export async function createFactory(name: string): Promise<Factory> {
-  return parseNamedItem(
+  return parseFactory(
     await request("factories", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -140,7 +148,7 @@ export async function createFactory(name: string): Promise<Factory> {
   );
 }
 export async function updateFactory(id: Factory["id"], name: string): Promise<Factory> {
-  return parseNamedItem(
+  return parseFactory(
     await request(`factories/${encodeURIComponent(id)}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },

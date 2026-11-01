@@ -109,6 +109,11 @@ export function parseTranscript(events: readonly SessionEvent[]): {
           "saum.remove_item",
           "saum.resolve_feedback",
           "saum.complete_plan",
+          // Decode historical events without re-exposing these old functions to agents.
+          "saum.start_item",
+          "saum.complete_item",
+          "saum.block_item",
+          "saum.complete_implementation",
           "saum.work_item.submit_acceptance_criteria",
           "saum.work_item.request_review",
           "saum.work_item.report_blocker",

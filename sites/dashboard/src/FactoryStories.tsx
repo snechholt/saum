@@ -6,38 +6,41 @@ import { DataTable, type Column } from "@saum/ui";
 import { listStories, type Factory, type UserStory } from "./api";
 import { isActive, retryPlanning, retryImplementation } from "./sessions";
 import { PlanningBadge } from "./PlanningBadge";
+import { storyPath, sessionPath } from "./paths";
 import { UserStoryForm } from "./UserStoryForm";
 
-const columns: Column<UserStory>[] = [
-  {
-    id: "title",
-    header: "Title",
-    value: (story) => story.title,
-    render: (story) => (
-      <Link className="table-link story-title" to={`/stories/${encodeURIComponent(story.id)}`}>
-        {story.title}
-      </Link>
-    ),
-  },
-  {
-    id: "goal",
-    header: "Goal",
-    value: (story) => story.goal,
-    render: (story) => <span className="story-goal">{story.goal || "—"}</span>,
-  },
-  {
-    id: "planning",
-    header: "Status",
-    value: (story) => story.planningStatus,
-    render: (story) => (
-      <PlanningBadge
-        status={story.planningStatus}
-        kind={story.sessionKind}
-        goalStatus={story.goalStatus}
-      />
-    ),
-  },
-];
+function columns(factoryId: string): Column<UserStory>[] {
+  return [
+    {
+      id: "title",
+      header: "Title",
+      value: (story) => story.title,
+      render: (story) => (
+        <Link className="table-link story-title" to={storyPath(factoryId, story.id)}>
+          {story.title}
+        </Link>
+      ),
+    },
+    {
+      id: "goal",
+      header: "Goal",
+      value: (story) => story.goal,
+      render: (story) => <span className="story-goal">{story.goal || "—"}</span>,
+    },
+    {
+      id: "planning",
+      header: "Status",
+      value: (story) => story.planningStatus,
+      render: (story) => (
+        <PlanningBadge
+          status={story.planningStatus}
+          kind={story.sessionKind}
+          goalStatus={story.goalStatus}
+        />
+      ),
+    },
+  ];
+}
 type StoryList =
   | { status: "loading" }
   | { status: "ready"; stories: UserStory[] }
@@ -104,9 +107,7 @@ export function FactoryStories({ factory }: { factory: Factory }) {
             }
           : current,
       );
-      void navigate(
-        `/stories/${encodeURIComponent(story.id)}/sessions/${encodeURIComponent(session.id)}`,
-      );
+      void navigate(sessionPath(factory.id, story.id, session.id));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not start session.");
     } finally {
@@ -119,6 +120,19 @@ export function FactoryStories({ factory }: { factory: Factory }) {
       <header className="page-title">
         <h1>{factory.name}</h1>
       </header>
+      <details className="factory-workspace">
+        <summary>Workspace</summary>
+        <dl>
+          <dt>Root</dt>
+          <dd>
+            <code>{factory.workspaceRoot}</code>
+          </dd>
+          <dt>Main repository</dt>
+          <dd>
+            <code>{factory.repositoryPath}</code>
+          </dd>
+        </dl>
+      </details>
       <div className="section-toolbar">
         <h2 className="section-title">User stories</h2>
         <Button
@@ -153,7 +167,7 @@ export function FactoryStories({ factory }: { factory: Factory }) {
       ) : (
         <DataTable
           rows={list.stories}
-          columns={columns}
+          columns={columns(factory.id)}
           rowKey={(story) => story.id}
           label="User stories"
           emptyMessage="No user stories"
@@ -167,9 +181,7 @@ export function FactoryStories({ factory }: { factory: Factory }) {
                 title="Session"
                 disabled={!story.sessionId}
                 onClick={() => {
-                  void navigate(
-                    `/stories/${encodeURIComponent(story.id)}/sessions/${encodeURIComponent(story.sessionId)}`,
-                  );
+                  void navigate(sessionPath(factory.id, story.id, story.sessionId));
                 }}
               >
                 <Terminal size={16} />

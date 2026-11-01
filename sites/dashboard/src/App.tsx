@@ -1,9 +1,11 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { Button } from "@cloudflare/kumo/components/button";
 import { Sidebar } from "@cloudflare/kumo/components/sidebar";
 import {
   Factory as FactoryIcon,
+  Gear,
+  Scroll,
   PencilSimple,
   Plus,
   SquaresFour,
@@ -16,6 +18,8 @@ import { FactoryStories } from "./FactoryStories";
 import { DeleteFactoryDialog } from "./DeleteFactoryDialog";
 
 const StoryPage = lazy(() => import("./StoryPage"));
+const SettingsPage = lazy(() => import("./SettingsPage"));
+const AuditPage = lazy(() => import("./AuditPage"));
 
 type FactoryList =
   | { status: "loading" }
@@ -25,7 +29,10 @@ type Form = { mode: "create" } | { mode: "edit"; factory: Factory } | null;
 
 export default function App() {
   const [list, setList] = useState<FactoryList>({ status: "loading" });
-  const { factoryId, storyId } = useParams();
+  const { factoryId, storyId, auditSessionId = "" } = useParams();
+  const { pathname } = useLocation(),
+    settingsRoute = pathname === "/settings",
+    auditRoute = pathname === "/audit" || pathname.startsWith("/audit/");
   const navigate = useNavigate();
   const selected =
     list.status === "ready"
@@ -78,7 +85,7 @@ export default function App() {
             }
           : current,
       );
-      if (factoryId === factory.id) void navigate("/");
+      if (factoryId === factory.id) void navigate("/factories");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not delete factory.");
     } finally {
@@ -102,6 +109,12 @@ export default function App() {
         </Link>
       ),
     },
+    {
+      id: "workspace",
+      header: "Workspace",
+      value: (factory) => factory.workspaceRoot,
+      render: (factory) => <code className="workspace-path">{factory.workspaceRoot}</code>,
+    },
   ];
 
   return (
@@ -124,10 +137,10 @@ export default function App() {
             <Sidebar.MenuButton
               className="nav-item"
               icon={SquaresFour}
-              active={!selected && !storyId}
-              aria-current={!selected && !storyId ? "page" : undefined}
+              active={!settingsRoute && !auditRoute}
+              aria-current={!settingsRoute && !auditRoute ? "page" : undefined}
               onClick={() => {
-                void navigate("/");
+                void navigate("/factories");
                 setError("");
               }}
             >
@@ -135,6 +148,28 @@ export default function App() {
               {list.status === "ready" && (
                 <Sidebar.MenuBadge>{list.factories.length}</Sidebar.MenuBadge>
               )}
+            </Sidebar.MenuButton>
+            <Sidebar.MenuButton
+              className="nav-item"
+              icon={Scroll}
+              active={auditRoute}
+              aria-current={auditRoute ? "page" : undefined}
+              onClick={() => {
+                void navigate("/audit");
+              }}
+            >
+              Audit
+            </Sidebar.MenuButton>
+            <Sidebar.MenuButton
+              className="nav-item"
+              icon={Gear}
+              active={settingsRoute}
+              aria-current={settingsRoute ? "page" : undefined}
+              onClick={() => {
+                void navigate("/settings");
+              }}
+            >
+              Settings
             </Sidebar.MenuButton>
           </Sidebar.Menu>
         </Sidebar.Content>
@@ -144,9 +179,20 @@ export default function App() {
           <Sidebar.Trigger />
           <span>Saum</span>
         </div>
-        {storyId ? (
+        {settingsRoute ? (
+          <Suspense fallback={<output>Loading…</output>}>
+            <SettingsPage />
+          </Suspense>
+        ) : auditRoute ? (
+          <Suspense fallback={<output>Loading…</output>}>
+            <AuditPage
+              factories={list.status === "ready" ? list.factories : []}
+              sessionId={auditSessionId}
+            />
+          </Suspense>
+        ) : storyId && factoryId ? (
           <Suspense fallback={<output className="empty-state">Loading…</output>}>
-            <StoryPage key={storyId} id={storyId} />
+            <StoryPage key={storyId} id={storyId} factoryId={factoryId} />
           </Suspense>
         ) : factoryId && list.status === "loading" ? (
           <output className="empty-state">Loading…</output>

@@ -1,4 +1,4 @@
-import { parseNamedItem, parseUserStory, request, type Factory, type UserStory } from "./api";
+import { parseFactory, parseUserStory, request, type Factory, type UserStory } from "./api";
 import { parseSession, type Session } from "./sessions";
 export type StoryDetail = { story: UserStory; factory: Factory; sessions: Session[] };
 export async function getStory(id: string): Promise<StoryDetail> {
@@ -14,7 +14,7 @@ export async function getStory(id: string): Promise<StoryDetail> {
     throw new Error("Invalid story response.");
   return {
     story: parseUserStory(body.story),
-    factory: parseNamedItem(body.factory),
+    factory: parseFactory(body.factory),
     sessions: body.sessions.map((value: unknown) => parseSession(value)),
   };
 }

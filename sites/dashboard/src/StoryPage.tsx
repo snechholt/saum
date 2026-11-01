@@ -13,6 +13,7 @@ import {
   type Session,
 } from "./sessions";
 import { usePlanningSession } from "./usePlanningSession";
+import { sessionPath } from "./paths";
 import { PlanReview } from "./PlanReview";
 import { ImplementationProgress } from "./ImplementationProgress";
 
@@ -25,9 +26,7 @@ function StoryView({ detail, sessionId }: { detail: StoryDetail; sessionId: stri
   const current = matches ? (session.detail?.session ?? null) : null;
   const items = matches ? (session.detail?.items ?? []) : [];
   function selectSession(id: string) {
-    void navigate(
-      `/stories/${encodeURIComponent(detail.story.id)}/sessions/${encodeURIComponent(id)}`,
-    );
+    void navigate(sessionPath(detail.factory.id, detail.story.id, id));
   }
   async function retry() {
     setBusy(true);
@@ -59,7 +58,7 @@ function StoryView({ detail, sessionId }: { detail: StoryDetail; sessionId: stri
     <div className="story-layout">
       <section className="story-workspace" aria-label="Story workspace">
         <nav className="story-breadcrumb" aria-label="Breadcrumb">
-          <Link to="/">Factories</Link>
+          <Link to="/factories">Factories</Link>
           <CaretRight size={14} />
           <Link to={`/factories/${encodeURIComponent(detail.factory.id)}`}>
             {detail.factory.name}
@@ -139,7 +138,7 @@ function StoryView({ detail, sessionId }: { detail: StoryDetail; sessionId: stri
     </div>
   );
 }
-export default function StoryPage({ id }: { id: string }) {
+export default function StoryPage({ id, factoryId }: { id: string; factoryId: string }) {
   const { sessionId = "" } = useParams();
   const [detail, setDetail] = useState<StoryDetail | null>(null),
     [error, setError] = useState("");
@@ -180,6 +179,7 @@ export default function StoryPage({ id }: { id: string }) {
         )}
       </div>
     );
+  if (detail.factory.id !== factoryId) return <p role="alert">Story not found in this factory.</p>;
   const activeSession = sessionId || detail.story.sessionId;
   return (
     <>
