@@ -235,13 +235,15 @@ func (p *Planner) execute(parent context.Context, session Session) {
 		finish(SessionFailed, err)
 		return
 	}
-	if session.Kind == ImplementationSession {
+	workspaceNote := ""
+	if session.Kind != SummarySession {
 		owned, err := p.Store.ownedWorkspace(ctx, factoryID, path)
 		if err != nil {
 			finish(SessionFailed, err)
 			return
 		}
-		if err := p.Store.initializeGoalBase(ctx, session, owned); err != nil {
+		workspaceNote, err = p.Store.syncStoryWorkspace(ctx, owned)
+		if err != nil {
 			finish(SessionFailed, err)
 			return
 		}
@@ -260,6 +262,24 @@ func (p *Planner) execute(parent context.Context, session Session) {
 			finish(SessionFailed, err)
 			return
 		}
+	}
+	if workspaceNote != "" {
+		stories, err := p.Store.listStories(factoryID)
+		if err != nil {
+			finish(SessionFailed, err)
+			return
+		}
+		others := []UserStory{}
+		for _, story := range stories {
+			if story.ID != session.StoryID {
+				others = append(others, story)
+			}
+		}
+		if len(others) > 0 {
+			data, _ := json.Marshal(others)
+			workspaceNote += "Other factory stories (context only; do not implement or approve them): " + string(data) + "\nIf another story owns the application foundations, wait for its accepted integration instead of bootstrapping a competing application.\n"
+		}
+		prompt = workspaceNote + "\n" + prompt
 	}
 	token := rand.Text()
 	if err = p.Store.startSession(session.ID, path, prompt, token); err != nil {

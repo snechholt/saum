@@ -59,9 +59,10 @@ func (s *Store) initializeGoalBase(ctx context.Context, session Session, owned O
 	if previousRef != "" && previousRef != branch {
 		return fmt.Errorf("factory main branch changed; restore %s before continuing", previousRef)
 	}
-	if previousBase == "" || base == main {
-		_, err = s.db.Exec("UPDATE goal_workflows SET base_commit=?,base_ref=? WHERE plan_session_id=?", base, branch, session.ParentSessionID)
+	if base != main {
+		return fmt.Errorf("merge accepted factory main into this story and finish the merge before requesting review")
 	}
+	_, err = s.db.Exec("UPDATE goal_workflows SET base_commit=?,base_ref=? WHERE plan_session_id=?", base, branch, session.ParentSessionID)
 	return err
 }
 func approvedCommit(ctx context.Context, owned OwnedWorkspace, tree ArtifactTree, reviewID string) (string, error) {
@@ -183,6 +184,8 @@ func (s *Store) processIntegrations() error {
 	return tx.Commit()
 }
 func (s *Store) integrateSnapshot(ctx context.Context, planID, base, ref, commit string) error {
+	s.workspaceMu.Lock()
+	defer s.workspaceMu.Unlock()
 	plan, err := s.session(planID)
 	if err != nil {
 		return err

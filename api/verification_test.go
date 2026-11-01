@@ -69,3 +69,18 @@ func TestVerificationRecordsRealExitAndIsolatedSource(t *testing.T) {
 		t.Fatal("old check accepted for new source")
 	}
 }
+
+func TestGoVerificationSnapshotHasUsableGitHistory(t *testing.T) {
+	s := testStore(t)
+	plan, _ := submittedPlan(t, s)
+	if err := s.approvePlan(plan.ID); err != nil {
+		t.Fatal(err)
+	}
+	goal := startClaimed(t, s)
+	for name, data := range map[string]string{"go.mod": "module example.com/verification\n\ngo 1.24\n", "main.go": "package main\nfunc main(){}\n"} {
+		if err := os.WriteFile(filepath.Join(plan.Worktree, name), []byte(data), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	successfulCheck(t, s, goal, []string{"go", "build", "-o", filepath.Join(t.TempDir(), "app"), "."})
+}

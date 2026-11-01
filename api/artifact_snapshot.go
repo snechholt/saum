@@ -64,6 +64,14 @@ func quoteGitPath(path string) string {
 // Git hashes captured raw bytes in one batch, with collision detection and no
 // clean/smudge filters. Neither the goal's staging area nor its refs are changed.
 func captureTree(ctx context.Context, worktree, repository string) (ArtifactTree, error) {
+	if _, err := gitOutput(ctx, worktree, "rev-parse", "-q", "--verify", "MERGE_HEAD"); err == nil {
+		return "", fmt.Errorf("finish the story merge before verification or review")
+	}
+	if unmerged, err := gitOutput(ctx, worktree, "ls-files", "--unmerged", "-z"); err != nil {
+		return "", err
+	} else if len(unmerged) > 0 {
+		return "", fmt.Errorf("resolve unmerged files before verification or review")
+	}
 	if value, err := gitOutput(ctx, worktree, "config", "--bool", "core.sparseCheckout"); err == nil && strings.TrimSpace(string(value)) == "true" {
 		return "", fmt.Errorf("sparse checkouts must be expanded before review")
 	}
@@ -334,7 +342,22 @@ func materializeTree(ctx context.Context, repository string, tree ArtifactTree, 
 	if _, err := gitOutput(ctx, directory, "init", "--template=", "-b", "main"); err != nil {
 		return err
 	}
-	env := []string{"GIT_ALTERNATE_OBJECT_DIRECTORIES=" + filepath.Join(repository, ".git", "objects")}
-	_, err = gitInput(ctx, directory, nil, env, "read-tree", string(tree))
+	alternates := filepath.Join(directory, ".git", "objects", "info", "alternates")
+	if err := os.WriteFile(alternates, []byte(quoteGitPath(filepath.Join(repository, ".git", "objects"))+"\n"), 0600); err != nil {
+		return err
+	}
+	identity := []string{"GIT_AUTHOR_NAME=Saum", "GIT_AUTHOR_EMAIL=saum@localhost", "GIT_COMMITTER_NAME=Saum", "GIT_COMMITTER_EMAIL=saum@localhost", "GIT_AUTHOR_DATE=2000-01-01T00:00:00Z", "GIT_COMMITTER_DATE=2000-01-01T00:00:00Z"}
+	output, err := gitInput(ctx, directory, []byte("Verification source snapshot\n"), identity, "commit-tree", string(tree))
+	if err != nil {
+		return err
+	}
+	commit, err := objectID(output)
+	if err != nil {
+		return err
+	}
+	if _, err := gitOutput(ctx, directory, "update-ref", "refs/heads/main", commit); err != nil {
+		return err
+	}
+	_, err = gitOutput(ctx, directory, "read-tree", commit)
 	return err
 }

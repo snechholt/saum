@@ -6,7 +6,20 @@ Each story has a title and a high-level goal: what the user should be able to
 achieve, not how to implement it. Open a Factory to create and browse its stories.
 Factories containing User stories cannot be deleted.
 
-There are no implementation plans, agents, issues, or shipping workflows yet.
+Stories are planned and implemented by Codex, one work item at a time. A factory agent prepares an executive summary; only human approval advances the next item.
+
+## Shared factory workspace
+
+Each factory owns one Git repository and shared application. Stories use separate
+worktrees, reused across retries. Before a story turn, Saum brings in accepted
+factory main changes, checkpointing local work on the story branch. Conflicts
+are left for the story agent to resolve; unfinished merges cannot be reviewed.
+Other stories' unapproved changes never flow into main automatically. Final
+human approval queues integration into a clean, unchanged factory main.
+
+Codex sessions and recorded verification commands run with full host permissions,
+including networking and localhost listeners. Only run trusted code: the workflow
+approval gates are not an OS security boundary against arbitrary local programs.
 
 ## Develop
 

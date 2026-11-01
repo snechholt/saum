@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sync"
 
 	_ "modernc.org/sqlite"
 )
@@ -31,8 +32,9 @@ type UserStory struct {
 var ErrFactoryNotEmpty = errors.New("Factory still contains user stories")
 
 type Store struct {
-	db      *sql.DB
-	planner *Planner
+	db          *sql.DB
+	planner     *Planner
+	workspaceMu sync.Mutex
 }
 
 func openStore(file string) (*Store, error) {
