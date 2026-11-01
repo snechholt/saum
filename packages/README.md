@@ -1,3 +1,3 @@
 # Shared JavaScript packages
 
-Reserved for shared packages when the factory needs them. None yet.
+- `ui/` — `@saum/ui`: accessible, sortable, filterable data tables.

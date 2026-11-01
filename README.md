@@ -1,7 +1,8 @@
 # Saum
 
-A **Factory** is Saum's top-level concept. The dashboard lists Factories and lets
-you create one by name. Open a Factory to see its Projects.
+A **Factory** is Saum's top-level concept. Create, rename, or delete Factories
+from a sortable, filterable table. Open a Factory to see its Projects.
+Factories containing Projects cannot be deleted.
 
 Project behavior and creation are not built yet. There are no agents, issues,
 or architecture workflows.
@@ -27,14 +28,14 @@ The Go driver is pure Go; no database service or C toolchain is required.
 
 - `api/` — Go server.
 - `sites/dashboard/` — React + Kumo dashboard.
-- `packages/` — reserved for shared JS packages.
+- `packages/ui/` — reusable sortable, filterable tables.
 - `examples/` — reserved for projects built with Saum.
 - `architecture/` — original design dossier, unchanged.
 
 ## Checks
 
 ```sh
-bun run check   # Oxfmt, type-aware Oxlint, strict TypeScript, Go race tests
+bun run check   # Oxfmt, Oxlint, strict TypeScript, table tests, Go race tests
 bun run build
 ```
 
