@@ -2,9 +2,7 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -12,9 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 	"unicode"
@@ -26,37 +22,7 @@ type Project struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 }
-type Factory struct {
-	mu       sync.Mutex
-	projects []Project
-	file     string
-}
 
-func openFactory(file string) (*Factory, error) {
-	factory := &Factory{file: file, projects: []Project{}}
-	data, err := os.ReadFile(file)
-	if errors.Is(err, os.ErrNotExist) {
-		return factory, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	if err = json.Unmarshal(data, &factory.projects); err != nil {
-		return nil, err
-	}
-	ids := map[string]bool{}
-	for _, project := range factory.projects {
-		name, err := parseName(project.Name)
-		if err != nil || name != project.Name || project.ID == "" || ids[project.ID] {
-			return nil, fmt.Errorf("invalid stored project")
-		}
-		ids[project.ID] = true
-	}
-	if factory.projects == nil {
-		factory.projects = []Project{}
-	}
-	return factory, nil
-}
 func parseName(raw string) (string, error) {
 	name := strings.TrimSpace(raw)
 	if !utf8.ValidString(name) || utf8.RuneCountInString(name) < 1 || utf8.RuneCountInString(name) > 80 {
@@ -69,34 +35,6 @@ func parseName(raw string) (string, error) {
 	}
 	return name, nil
 }
-func (f *Factory) create(name string) (Project, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	project := Project{ID: rand.Text(), Name: name}
-	projects := append(append([]Project{}, f.projects...), project)
-	data, err := json.MarshalIndent(projects, "", "  ")
-	if err != nil {
-		return Project{}, err
-	}
-	if err = os.MkdirAll(filepath.Dir(f.file), 0700); err != nil {
-		return Project{}, err
-	}
-	temporary, err := os.CreateTemp(filepath.Dir(f.file), ".projects-")
-	if err != nil {
-		return Project{}, err
-	}
-	defer os.Remove(temporary.Name())
-	_, writeErr := temporary.Write(data)
-	closeErr := temporary.Close()
-	if err = errors.Join(writeErr, closeErr); err != nil {
-		return Project{}, err
-	}
-	if err = os.Rename(temporary.Name(), f.file); err != nil {
-		return Project{}, err
-	}
-	f.projects = projects
-	return project, nil
-}
 func jsonResponse(w http.ResponseWriter, status int, value any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -105,9 +43,12 @@ func jsonResponse(w http.ResponseWriter, status int, value any) {
 func (f *Factory) handler(web http.Handler) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/projects", func(w http.ResponseWriter, r *http.Request) {
-		f.mu.Lock()
-		defer f.mu.Unlock()
-		jsonResponse(w, 200, f.projects)
+		projects, err := f.list()
+		if err != nil {
+			jsonResponse(w, 500, map[string]string{"error": "Could not load projects"})
+			return
+		}
+		jsonResponse(w, 200, projects)
 	})
 	mux.HandleFunc("POST /api/projects", func(w http.ResponseWriter, r *http.Request) {
 		if strings.Split(r.Header.Get("Content-Type"), ";")[0] != "application/json" {
@@ -158,12 +99,13 @@ func (f *Factory) handler(web http.Handler) http.Handler {
 	})
 }
 func main() {
-	data := flag.String("data", "../.saum/projects.json", "Local project list file")
+	data := flag.String("data", "../.saum/factory.sqlite", "SQLite database file")
 	flag.Parse()
 	factory, err := openFactory(*data)
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer factory.db.Close()
 	server := &http.Server{Addr: "127.0.0.1:8080", Handler: factory.handler(http.FileServer(http.Dir("../sites/dashboard/dist"))), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

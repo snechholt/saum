@@ -10,24 +10,36 @@ import (
 )
 
 func TestFactoryStartsEmptyAndPersistsNamedProjects(t *testing.T) {
-	file := filepath.Join(t.TempDir(), "projects.json")
+	file := filepath.Join(t.TempDir(), "factory.sqlite")
 	factory, err := openFactory(file)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(factory.projects) != 0 {
+	projects, err := factory.list()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(projects) != 0 {
 		t.Fatal("new factory should be empty")
 	}
 	project, err := factory.create("ToDo App")
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := factory.db.Close(); err != nil {
+		t.Fatal(err)
+	}
 	reopened, err := openFactory(file)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(reopened.projects) != 1 || reopened.projects[0] != project {
-		t.Fatalf("project was not persisted: %+v", reopened.projects)
+	defer reopened.db.Close()
+	projects, err = reopened.list()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(projects) != 1 || projects[0] != project {
+		t.Fatalf("project was not persisted: %+v", projects)
 	}
 }
 func TestProjectNames(t *testing.T) {
@@ -42,10 +54,11 @@ func TestProjectNames(t *testing.T) {
 	}
 }
 func TestProjectHTTPBoundary(t *testing.T) {
-	factory, err := openFactory(filepath.Join(t.TempDir(), "projects.json"))
+	factory, err := openFactory(filepath.Join(t.TempDir(), "factory.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer factory.db.Close()
 	handler := factory.handler(http.NotFoundHandler())
 	for _, tc := range []struct {
 		method, body, origin string
