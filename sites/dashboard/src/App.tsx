@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "@cloudflare/kumo/components/button";
+import { Sidebar } from "@cloudflare/kumo/components/sidebar";
 import {
   Factory as FactoryIcon,
   PencilSimple,
@@ -11,6 +12,7 @@ import { DataTable, type Column } from "@saum/ui";
 import { deleteFactory, listFactories, type Factory } from "./api";
 import { FactoryForm } from "./FactoryForm";
 import { FactoryProjects } from "./FactoryProjects";
+import { DeleteFactoryDialog } from "./DeleteFactoryDialog";
 
 type FactoryList =
   | { status: "loading" }
@@ -24,6 +26,7 @@ export default function App() {
   const [form, setForm] = useState<Form>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [pendingDeletion, setPendingDeletion] = useState<Factory | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -55,7 +58,7 @@ export default function App() {
   }
 
   async function removeFactory(factory: Factory) {
-    if (deleting || !window.confirm(`Delete “${factory.name}”?`)) return;
+    if (deleting) return;
     setDeleting(factory.id);
     setError("");
     try {
@@ -73,6 +76,7 @@ export default function App() {
       setError(reason instanceof Error ? reason.message : "Could not delete factory.");
     } finally {
       setDeleting(null);
+      setPendingDeletion(null);
     }
   }
 
@@ -96,26 +100,45 @@ export default function App() {
   ];
 
   return (
-    <div className="factory-layout">
-      <aside className="sidebar" aria-label="Navigation">
-        <div className="brand">
-          <FactoryIcon size={23} weight="bold" />
-          <strong>saum</strong>
-        </div>
-        <button
-          className="nav-item"
-          aria-current={selected ? undefined : "page"}
-          onClick={() => {
-            setSelected(null);
-            setError("");
-          }}
-        >
-          <SquaresFour size={17} />
-          <span>Factories</span>
-          {list.status === "ready" && <small>{list.factories.length}</small>}
-        </button>
-      </aside>
+    <Sidebar.Provider
+      defaultOpen
+      defaultWidth={224}
+      mobileBreakpoint={640}
+      collapsible="offcanvas"
+      className="factory-layout"
+    >
+      <Sidebar aria-label="Navigation">
+        <Sidebar.Header>
+          <div className="brand">
+            <FactoryIcon size={22} />
+            <span>Saum</span>
+          </div>
+        </Sidebar.Header>
+        <Sidebar.Content>
+          <Sidebar.Menu>
+            <Sidebar.MenuButton
+              className="nav-item"
+              icon={SquaresFour}
+              active={!selected}
+              aria-current={selected ? undefined : "page"}
+              onClick={() => {
+                setSelected(null);
+                setError("");
+              }}
+            >
+              Factories
+              {list.status === "ready" && (
+                <Sidebar.MenuBadge>{list.factories.length}</Sidebar.MenuBadge>
+              )}
+            </Sidebar.MenuButton>
+          </Sidebar.Menu>
+        </Sidebar.Content>
+      </Sidebar>
       <main className="workspace">
+        <div className="mobile-navigation">
+          <Sidebar.Trigger />
+          <span>Saum</span>
+        </div>
         {selected ? (
           <FactoryProjects key={selected.id} factory={selected} />
         ) : (
@@ -124,7 +147,7 @@ export default function App() {
               <h1>Factories</h1>
               <Button
                 variant="primary"
-                size="sm"
+                size="base"
                 shape="square"
                 aria-label="New factory"
                 title="New factory"
@@ -167,7 +190,7 @@ export default function App() {
                   <>
                     <Button
                       variant="ghost"
-                      size="xs"
+                      size="sm"
                       disabled={form !== null || deleting !== null}
                       shape="square"
                       title="Edit"
@@ -181,14 +204,14 @@ export default function App() {
                     </Button>
                     <Button
                       variant="ghost"
-                      size="xs"
+                      size="sm"
                       disabled={form !== null || deleting !== null}
                       shape="square"
                       title="Delete"
                       aria-label={`Delete ${factory.name}`}
                       loading={deleting === factory.id}
                       onClick={() => {
-                        void removeFactory(factory);
+                        setPendingDeletion(factory);
                       }}
                     >
                       <Trash size={15} />
@@ -200,6 +223,14 @@ export default function App() {
           </>
         )}
       </main>
-    </div>
+      <DeleteFactoryDialog
+        factory={pendingDeletion}
+        busy={deleting !== null}
+        onCancel={() => setPendingDeletion(null)}
+        onConfirm={(factory) => {
+          void removeFactory(factory);
+        }}
+      />
+    </Sidebar.Provider>
   );
 }
